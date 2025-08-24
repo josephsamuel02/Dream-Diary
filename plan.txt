@@ -1,0 +1,76 @@
+Diary App Outline
+Name- Dream Diary, (voice, text, personality test0
+Dreamnote
+
+
+### Technical
+use @react-native-async-storage/async-storage for managing themes and mood etc
+
+use SQLite for inputs and user profile
+
+
+
+This app has 3 phases
+Phase 1 MVP (basic app you can finish quickly)
+Phase 2 (cool improvements)
+Phase 3 (advanced features like AI, cloud sync, charts)
+
+Phase 1 MVP (basic app you can finish quickly)
+#features
+text entry
+voice entry
+1 min video upload/ recording
+photos
+calender view
+notification
+daily motivational quotes
+themes
+firebase login / profile setup (optional)
+
+
+
+
+
+1 home page design
+. Friendly and intuitive
+. Quick update (voice or text) in bold
+. a friendly welcome message per day (it should ask question and remember the Previous day mood)
+. 
+
+
+
+Phase 2 (cool improvements)
+personality test
+set tasks and reminders  
+more themes
+convert voice to text.
+data sync and data saving for very low cost.
+🔹 Syncing Flow (Common Approach)
+
+Write to SQLite first (offline).
+
+When internet is available:
+
+Push new/updated entries from SQLite → Firebase.
+
+Pull new/updated entries from Firebase → SQLite.
+
+Use timestamps or updatedAt fields to resolve conflicts.
+
+🔹 Tools / Patterns You Can Use
+
+Custom Sync Logic:
+
+Keep a column like lastSyncedAt in SQLite.
+
+On sync, compare updatedAt in Firebase vs SQLite and update whichever is older.
+
+Background Sync:
+
+Use expo-task-manager or an app focus listener to run sync in the background.
+
+Firebase Offline Mode (alternative):
+
+Firebase Firestore already supports offline caching.
+
+This means you might not need SQLite at all — Firestore itself can act as local + cloud storage.
