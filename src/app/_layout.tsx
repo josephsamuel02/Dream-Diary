@@ -1,46 +1,53 @@
-import { Tabs } from 'expo-router';
-import { FontAwesome6, Fontisto, Ionicons } from '@expo/vector-icons';
-import Feather from '@expo/vector-icons/Feather';
+// app/_layout.tsx
+import { Stack } from 'expo-router';
+import { useFonts, Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { Roboto_400Regular, Roboto_500Medium } from '@expo-google-fonts/roboto';
+import { Arizonia_400Regular } from '@expo-google-fonts/arizonia';
+
+import '../../global.css';
+import CustomHeader from '../components/mainNav';
+
 export default function Layout() {
-  const iconSize = 20;
+  const [fontsLoaded] = useFonts({
+    PoppinsRegular: Poppins_400Regular,
+    PoppinsBold: Poppins_700Bold,
+    RobotoRegular: Roboto_400Regular,
+    RobotoMedium: Roboto_500Medium,
+    Arizonia: Arizonia_400Regular,
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <Tabs
+    <Stack
       screenOptions={{
         headerStyle: { backgroundColor: 'dodgerblue' },
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'normal', fontSize: 18, padding: 0 },
-        tabBarActiveTintColor: 'dodgerblue', // active icon/text color
-        tabBarInactiveTintColor: 'gray', // inactive color
+        headerTitleStyle: { fontWeight: 'normal', fontSize: 18 },
+        // headerShown: false
       }}>
-      <Tabs.Screen
+      {/* Screens */}
+      <Stack.Screen
         name="index"
         options={{
-          title: 'Welcome',
-          tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={iconSize} color={color} />,
+          title: 'Dream Diary',
+          header: () => <CustomHeader />,
         }}
       />
-      <Tabs.Screen
-        name="screens/Explore/index"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <Fontisto name="search" size={iconSize} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="screens/Home/index"
+      <Stack.Screen
+        name="Home/index"
         options={{
           title: 'Upload',
-          tabBarIcon: ({ color }) => <Feather name="upload" size={iconSize} color={color} />,
         }}
       />
-
-      <Tabs.Screen
-        name="screens/About/index"
+      <Stack.Screen
+        name="About/index"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <FontAwesome6 name="user" size={size} color={color} />,
         }}
       />
-    </Tabs>
+    </Stack>
   );
 }

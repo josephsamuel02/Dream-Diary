@@ -1,20 +1,18 @@
-import '../../global.css';
-
-import { Link } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+// app/index.tsx
 import { View, Text } from 'react-native';
+import MainTab from '~/components/mainTab';
 
-export default function Index() {
+export default function Index({ navigation }: any) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <StatusBar style="auto" backgroundColor="#1e293b" /> 
-      <Text className="text-green-300">Welcome Page</Text>
-      <Link href="screens/Home" className="py-6">
-        Go to Home
-      </Link>
-      <Link href="screens/About" className="py-6">
-        Go to About
-      </Link>
+    <View className="flex-1 bg-cozy_background">
+      {/* Screen content */}
+
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-2xl font-bold">Dream Diary</Text>
+      </View>
+
+      {/* Custom tab at bottom */}
+      <MainTab navigation={navigation} />
     </View>
   );
 }

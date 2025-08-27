@@ -6,7 +6,7 @@ export default function Home() {
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
       <Text>🏠 Home Screen</Text>
 
-      <Link href="screens/About">Go to About</Link>
+      <Link href="/About">Go to About</Link>
     </View>
   );
 }
