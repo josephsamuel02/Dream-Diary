@@ -1,10 +1,16 @@
 // components/CustomTab.tsx
-import { View, TouchableOpacity, Text } from 'react-native';
+import {  TouchableOpacity, Text } from 'react-native';
 import { AntDesign, Feather, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const MainTab = ({ navigation }: any) => {
   return (
-    <View className="bg-cozy_accent flex-row items-center justify-around rounded-t-3xl py-3 pb-20 shadow-lg">
+    <LinearGradient
+      colors={['#F5EDE0', '#D97706']} // cozy brown → white
+      locations={[0, 0.5]} // brown stops at 70%, white takes the rest
+      start={{ x: 0.5, y: 0 }} // top center
+      end={{ x: 0.5, y: 1 }} // bottom center
+      className="flex-row items-center justify-around rounded-t-3xl py-3 pb-20 shadow-lg">
       {/* Home */}
       <TouchableOpacity
         className="items-center"
@@ -31,7 +37,7 @@ const MainTab = ({ navigation }: any) => {
         <Ionicons name="mic-outline" size={30} color="white" />
         <Text className="text-xs text-white">Voice</Text>
       </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 };
 

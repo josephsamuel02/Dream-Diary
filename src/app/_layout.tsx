@@ -23,7 +23,7 @@ export default function Layout() {
   return (
     <Stack
       screenOptions={{
-        headerTintColor: '#fff',
+        // headerTintColor: '#fff',
         // headerTitleStyle: { fontWeight: 'normal', fontSize: 18 },
         // headerShown: false
       }}>
@@ -31,7 +31,7 @@ export default function Layout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'Dream Diary',
+          // title: 'Dream Diary',
           header: () => <CustomHeader />,
         }}
       />
