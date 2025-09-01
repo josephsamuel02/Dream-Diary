@@ -23,9 +23,8 @@ export default function Layout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: 'dodgerblue' },
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'normal', fontSize: 18 },
+        // headerTitleStyle: { fontWeight: 'normal', fontSize: 18 },
         // headerShown: false
       }}>
       {/* Screens */}

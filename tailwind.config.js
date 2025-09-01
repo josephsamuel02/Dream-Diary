@@ -5,6 +5,9 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     colors: {
+      //default
+      white: '#ffffff',
+
       // Clean Palette
       clean_background: '#FDFCFB',
       clean_text: '#2D2D2D',
@@ -61,15 +64,15 @@ module.exports = {
       dark_surface: '#374151',
       dark_error: '#EF4444',
     },
-  },
 
-  extend: {
-    fontFamily: {
-      poppins: ['PoppinsRegular'],
-      'poppins-bold': ['PoppinsBold'],
-      roboto: ['RobotoRegular'],
-      'roboto-medium': ['RobotoMedium'],
-      arizonia: ['Arizonia'],
+    extend: {
+      fontFamily: {
+        poppins: ['PoppinsRegular', 'sans-serif'],
+        'poppins-bold': ['PoppinsBold', 'sans-serif'],
+        roboto: ['RobotoRegular', 'sans-serif'],
+        'roboto-medium': ['RobotoMedium', 'sans-serif'],
+        arizonia: ['Arizonia', 'cursive'],
+      },
     },
   },
   plugins: [],
