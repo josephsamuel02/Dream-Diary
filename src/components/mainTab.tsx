@@ -1,43 +1,50 @@
 // components/CustomTab.tsx
-import {  TouchableOpacity, Text } from 'react-native';
-import { AntDesign, Feather, Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { TouchableOpacity, View } from 'react-native';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-const MainTab = ({ navigation }: any) => {
+const MainTab = () => {
+  const router = useRouter();
+
   return (
-    <LinearGradient
-      colors={['#F5EDE0', '#D97706']} // cozy brown → white
-      locations={[0, 0.5]} // brown stops at 70%, white takes the rest
-      start={{ x: 0.5, y: 0 }} // top center
-      end={{ x: 0.5, y: 1 }} // bottom center
-      className="flex-row items-center justify-around rounded-t-3xl py-3 pb-20 shadow-lg">
-      {/* Home */}
+    <View className=" absolute bottom-0 right-0 z-20 ml-auto w-28 flex-col items-center justify-around  gap-y-3 ">
+      {/* Camera */}
       <TouchableOpacity
         className="items-center"
-
         //   onPress={() => navigation.navigate('index')}
       >
-        <Feather name="camera" size={26} color="white" />
-        <Text className="text-xs text-white">Image</Text>
+        <Feather
+          name="camera"
+          size={24}
+          className="items-center rounded-full bg-white p-3 text-cozy_accent shadow-md"
+        />
       </TouchableOpacity>
 
-      {/* Upload */}
-      <TouchableOpacity
-      //    onPress={() => navigation.navigate('Home/index')}
-      >
-        <AntDesign name="pluscircle" size={68} color="white" />
-      </TouchableOpacity>
-
-      {/* Profile */}
+      {/* Voice */}
       <TouchableOpacity
         className="items-center"
-
         //   onPress={() => navigation.navigate('About/index')}
       >
-        <Ionicons name="mic-outline" size={30} color="white" />
-        <Text className="text-xs text-white">Voice</Text>
+        <Ionicons
+          name="mic-outline"
+          size={30}
+          className="items-center rounded-full bg-white p-3 text-cozy_accent shadow-md"
+        />
       </TouchableOpacity>
-    </LinearGradient>
+
+      {/* Add Text */}
+      <TouchableOpacity
+        onPress={() => router.push('/DiaryInput')}
+        className="mb-8 items-center justify-center rounded-full bg-[#ffffff] p-3  shadow-md "
+        style={{ width: 'auto', height: 'auto' }}>
+        <Ionicons
+          name="add-outline"
+          size={55}
+          color="#252525"
+          className="  items-center rounded-full shadow-lg"
+        />
+      </TouchableOpacity>
+    </View>
   );
 };
 

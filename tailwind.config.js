@@ -71,7 +71,7 @@ module.exports = {
         'poppins-bold': ['PoppinsBold', 'sans-serif'],
         roboto: ['RobotoRegular', 'sans-serif'],
         'roboto-medium': ['RobotoMedium', 'sans-serif'],
-        arizonia: ['Arizonia', 'cursive'],
+        arizonia: ['Arizonia_400Regular', 'cursive'],
       },
     },
   },

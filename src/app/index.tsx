@@ -4,6 +4,7 @@ import { View, Text, FlatList, Dimensions, ScrollView } from 'react-native';
 import { greetingsByTime, quotes } from '../util/greetings';
 
 import MainTab from '~/components/mainTab';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -62,77 +63,77 @@ export default function Index({ navigation }: any) {
   }, [currentIndex]);
 
   return (
-    <View className="flex-1 m-0 bg-cozy_background">
-      {/* Screen content */}
-      <View className="flex-1 p-2">
-        <View className="h-auto w-full">
-          <Text className="font-poppins text-lg font-bold text-cozy_text">{greeting} </Text>
-        </View>
+       <View className=" flex-1 bg-cozy_background ">
+        {/* Screen content */}
+        <View className=" p-2">
+          <View className="h-auto w-full">
+            <Text className="font-poppins text-[15px] font-bold text-cozy_text">{greeting} </Text>
+          </View>
 
-        {/* Motivational quotes slide */}
-        <View className="my-4 mb-5 h-auto">
-          <FlatList
-            ref={flatListRef}
-            data={quotes}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(_, index) => index.toString()}
-            renderItem={({ item }) => (
-              <View
-                style={{ width: width - 40 }}
-                className="mx-2 justify-center rounded-xl border border-[silver] bg-[#ecba80] p-4 pt-2 shadow-2xl">
-                <Text className="pb-4 text-center font-poppins text-base text-cozy_text">
-                  {item.text}
-                </Text>
-                <Text className="text-gray-500 absolute bottom-2 left-4 text-sm italic">
-                  — {item.author !== 'Unknown' ? item.author : 'Anonymous'}
-                </Text>
-              </View>
-            )}
-          />
-        </View>
-
-        {/* History Section */}
-        <View className="h-auto w-full">
-          <Text className="text-black pb-3 font-roboto text-lg">History</Text>
-        </View>
-
-        <ScrollView className="flex h-auto w-auto flex-col space-y-3">
-          {historyData.map((item, index) => (
-            <View
-              key={index}
-              className="mb-4 flex h-auto w-full flex-1 flex-row items-center rounded-md bg-white p-3  shadow">
-              {/* Date Block */}
-              <View className="mr-3 flex flex-row items-center border-r-2 border-[silver] pr-2">
-                <Text className="text-black pr-1 font-roboto text-[40px] font-bold">
-                  {item.day}
-                </Text>
-                <View className="flex flex-col justify-center">
-                  <Text className="text-left font-roboto text-base font-bold text-cozy_text">
-                    {item.month}
+          {/* Motivational quotes slide */}
+          <View className="my-4 mb-5 h-auto">
+            <FlatList
+              ref={flatListRef}
+              data={quotes}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(_, index) => index.toString()}
+              renderItem={({ item }) => (
+                <View
+                  style={{ width: width - 40, height: 90 }}
+                  className="mx-2 justify-center rounded-xl border border-[silver] bg-[#ecba80] p-4  pt-2 shadow-2xl">
+                  <Text className="font-lg pb-4 text-center font-poppins text-base text-cozy_text">
+                    {item.text}
                   </Text>
-                  <Text className="text-left font-roboto text-base font-bold text-cozy_text">
-                    {item.year}
+                  <Text className="text-gray-500 absolute bottom-2 left-4 text-sm italic">
+                    — {item.author !== 'Unknown' ? item.author : 'Anonymous'}
                   </Text>
                 </View>
+              )}
+            />
+          </View>
+
+          {/* History Section */}
+          <View className="h-auto w-full">
+            <Text className="text-black pb-3 font-roboto text-lg">History</Text>
+          </View>
+
+          <ScrollView className="flex h-full w-auto flex-col space-y-3">
+            {historyData.map((item, index) => (
+              <View
+                key={index}
+                className="mb-4 flex h-auto w-full flex-1 flex-row items-center rounded-md bg-white p-3  shadow">
+                {/* Date Block */}
+                <View className="mr-3 flex flex-row items-center border-r-2 border-[silver] pr-2">
+                  <Text className="text-black pr-1 font-roboto text-[40px] font-bold">
+                    {item.day}
+                  </Text>
+                  <View className="flex flex-col justify-center">
+                    <Text className="text-left font-roboto text-base font-bold text-cozy_text">
+                      {item.month}
+                    </Text>
+                    <Text className="text-left font-roboto text-base font-bold text-cozy_text">
+                      {item.year}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Diary Text */}
+                <Text
+                  className="flex-1 font-roboto text-[14px] text-cozy_text"
+                  numberOfLines={3}
+                  ellipsizeMode="tail"
+                  style={{ lineHeight: 18 }}>
+                  {item.text}
+                </Text>
               </View>
+            ))}
+          </ScrollView>
+        </View>
 
-              {/* Diary Text */}
-              <Text
-                className="flex-1 font-roboto text-[14px] text-cozy_text"
-                numberOfLines={3}
-                ellipsizeMode="tail"
-                style={{ lineHeight: 18 }}>
-                {item.text}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
+        {/* Custom tab at bottom */}
+        <MainTab />
       </View>
-
-      {/* Custom tab at bottom */}
-      <MainTab navigation={navigation} />
-    </View>
-  );
+   );
 }
