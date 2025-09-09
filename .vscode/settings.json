@@ -8,6 +8,8 @@
         "Fontisto",
         "journaling",
         "nativewind",
-        "pluscircle"
+        "persistor",
+        "pluscircle",
+        "Pressable"
     ]
 }

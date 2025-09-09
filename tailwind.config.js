@@ -7,6 +7,7 @@ module.exports = {
     colors: {
       //default
       white: '#ffffff',
+      black: '#000000',
 
       // Clean Palette
       clean_background: '#FDFCFB',

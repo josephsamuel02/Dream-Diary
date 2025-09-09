@@ -4,10 +4,12 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts, Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Roboto_400Regular, Roboto_500Medium } from '@expo-google-fonts/roboto';
 import { Arizonia_400Regular } from '@expo-google-fonts/arizonia';
-
+import { Provider } from 'react-redux';
+ import { PersistGate } from 'redux-persist/integration/react';
 import '../../global.css';
 import CustomHeader from '../components/mainNav';
 import DiaryInputHeader from '~/components/diaryInputHeader';
+import { persistor, store } from '~/store/store';
 
 export default function Layout() {
   const [fontsLoaded] = useFonts({
@@ -21,7 +23,8 @@ export default function Layout() {
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
+<Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>  <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <Stack>
           <Stack.Screen
@@ -41,6 +44,7 @@ export default function Layout() {
           <Stack.Screen name="About/index" options={{ title: 'Profile' }} />
         </Stack>
       </SafeAreaView>
-    </SafeAreaProvider>
+    </SafeAreaProvider> </PersistGate>
+    </Provider>
   );
 }
