@@ -1,11 +1,8 @@
-// DiaryInputBody.tsx
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   TextInput,
   Image,
-  Text,
-  TouchableOpacity,
   Alert,
   Platform,
   Keyboard,
@@ -22,16 +19,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useAudioRecorder,
   useAudioRecorderState,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-  RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
+  RecordingPresets,
 } from 'expo-audio';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-// import { useDispatch, useSelector } from 'react-redux';
-// import { RootState } from '../store'; // adjust path
-// import { addBlock as addBlockAction, updateText, setBlocks } from '../store/diarySlice';
+
+import DiaryToolbar, { AudioPlayer } from './diaryToolbar';
 
 type TextBlock = { id: string; type: 'text'; content: string };
 type ImageBlock = { id: string; type: 'image'; content: string };
@@ -54,66 +47,6 @@ const formatTime = (seconds = 0) => {
     .toString()
     .padStart(2, '0');
   return `${m}:${s}`;
-};
-
-/* Small audio player component */
-const AudioPlayer = ({ uri }: { uri: string }) => {
-  const player = useAudioPlayer(uri);
-  const status = useAudioPlayerStatus(player);
-
-  const playing = status?.playing ?? false;
-  const currentTime = status?.currentTime ?? 0;
-  const duration = status?.duration ?? 0;
-
-  const onTogglePlay = useCallback(() => {
-    try {
-      if (playing) player.pause();
-      else {
-        if (duration && currentTime >= duration - 0.3) player.seekTo(0);
-        player.play();
-      }
-    } catch (e) {
-      console.warn('Playback error:', e);
-    }
-  }, [playing, player, currentTime, duration]);
-
-  const onReplay = useCallback(() => {
-    try {
-      player.seekTo(0);
-      player.play();
-    } catch (e) {
-      console.warn('Replay error:', e);
-    }
-  }, [player]);
-
-  const progressPercent =
-    duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
-
-  return (
-    <View className="my-2 rounded-xl bg-white p-3 shadow-lg">
-      <View className="flex-row items-center">
-        <TouchableOpacity
-          onPress={onTogglePlay}
-          className="mr-2 h-11 w-11 items-center justify-center rounded-full border bg-[#f7ede5]">
-          <Text className="text-gray-900 text-lg">{playing ? '❚❚' : '▶'}</Text>
-        </TouchableOpacity>
-
-        <View className="flex-1">
-          <View className="overflow-hidden rounded-md bg-[silver]">
-            <View style={{ width: `${progressPercent}%` }} className="h-[3px] bg-black" />
-          </View>
-          <View className="mt-1.5 flex-row justify-between">
-            <Text className="text-gray-700 text-xs">{formatTime(currentTime)}</Text>
-            <Text className="text-gray-700 text-xs">{formatTime(duration)}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity onPress={onReplay} className="ml-2 rounded-md bg-white p-1.5">
-          <Text className="text-gray-900 text-base">⟲</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
 };
 
 export default function DiaryInputBody() {
@@ -170,7 +103,6 @@ export default function DiaryInputBody() {
   const saveDraftImmediate = useCallback(async (items: Block[]) => {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      // optional: console.log('draft saved', items.length);
     } catch (e) {
       console.warn('Failed to save draft', e);
     }
@@ -346,12 +278,13 @@ export default function DiaryInputBody() {
   const pickImageFromLibrary = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images ?? 'Images',
         allowsEditing: true,
       });
 
-      if (!result.canceled && result.assets?.length) {
-        const src = result.assets[0].uri;
+      // new expo returns { canceled: boolean, assets: [...] }
+      if (!result.canceled && (result as any).assets?.length) {
+        const src = (result as any).assets[0].uri;
         const dest = await copyFileToAppAsync(src, 'jpg');
         addBlock('image', dest);
       } else if (!result.canceled && (result as any).uri) {
@@ -372,12 +305,12 @@ export default function DiaryInputBody() {
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images ?? 'Images',
         allowsEditing: true,
       });
 
-      if (!result.canceled && result.assets?.length) {
-        const src = result.assets[0].uri;
+      if (!result.canceled && (result as any).assets?.length) {
+        const src = (result as any).assets[0].uri;
         const dest = await copyFileToAppAsync(src, 'jpg');
         addBlock('image', dest);
       } else if (!result.canceled && (result as any).uri) {
@@ -416,7 +349,6 @@ export default function DiaryInputBody() {
 
   // Focus helper: focus last text input (create one if none)
   const focusLastTextInput = useCallback(() => {
-    // find last text block
     const lastText = [...blocks].reverse().find((b) => b.type === 'text') as TextBlock | undefined;
 
     if (lastText) {
@@ -426,7 +358,6 @@ export default function DiaryInputBody() {
         return;
       }
 
-      // if ref isn't mounted, try to scroll to it then focus after a tick
       const idx = blocks.findIndex((b) => b.id === lastText.id);
       if (idx >= 0) {
         try {
@@ -439,11 +370,9 @@ export default function DiaryInputBody() {
       }
     }
 
-    // no text block — create one and focus it
     const newId = genId();
     setBlocks((prev: any) => {
       const next = [...prev, { id: newId, type: 'text', content: '' }];
-      // scroll after render
       setTimeout(() => {
         try {
           listRef.current?.scrollToIndex({ index: next.length - 1, animated: true });
@@ -467,9 +396,7 @@ export default function DiaryInputBody() {
           onChangeText={(t) => updateText(index, t)}
           placeholder="Write here..."
           placeholderTextColor="#9CA3AF"
-          // ensure keyboard-aware flatlist will scroll
           onFocus={() => {
-            // optional: scroll to index if needed
             setTimeout(() => {
               try {
                 listRef.current?.scrollToIndex({ index, animated: true });
@@ -488,9 +415,8 @@ export default function DiaryInputBody() {
   };
 
   return (
-    <View style={styles.container} className="bg-cozy_surface">
+    <View style={styles.container} className="bg-white">
       <View style={styles.inner}>
-        {/* Pressable wrapper: tapping anywhere focuses last text input */}
         <Pressable style={{ flex: 1 }} onPress={focusLastTextInput}>
           <FlatList
             ref={listRef}
@@ -510,32 +436,16 @@ export default function DiaryInputBody() {
         style={[
           styles.toolbarWrapper,
           {
-            bottom: Animated.add(animatedBottom, new Animated.Value(BASE_BOTTOM_PADDING)), // small padding
+            bottom: Animated.add(animatedBottom, new Animated.Value(BASE_BOTTOM_PADDING)),
           },
-        ]}
-        className="mb-[-60px]">
+        ]}>
         <View style={styles.toolbar}>
-          <TouchableOpacity onPress={pickImageFromLibrary} hitSlop={8} style={styles.iconBtn}>
-            <Ionicons name="images-outline" size={28} color="#333" />
-            <Text style={styles.iconLabel}>Image</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={takePhoto} hitSlop={8} style={styles.iconBtn}>
-            <Ionicons name="camera-outline" size={28} color="#333" />
-            <Text style={styles.iconLabel}>Photo</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => (recorderState.isRecording ? stopRecording() : startRecording())}
-            hitSlop={8}
-            style={styles.iconBtn}>
-            <MaterialIcons
-              name={recorderState.isRecording ? 'stop-circle' : 'keyboard-voice'}
-              size={32}
-              color={recorderState.isRecording ? '#e53935' : '#333'}
-            />
-            <Text style={styles.iconLabel}>{recorderState.isRecording ? 'Stop' : 'Voice'}</Text>
-          </TouchableOpacity>
+          <DiaryToolbar
+            pickImageFromLibrary={pickImageFromLibrary}
+            takePhoto={takePhoto}
+            recorderIsRecording={recorderState.isRecording}
+            toggleRecording={() => (recorderState.isRecording ? stopRecording() : startRecording())}
+          />
         </View>
       </Animated.View>
     </View>
@@ -549,12 +459,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    marginBottom: -60,
     backgroundColor: 'transparent',
   },
   toolbar: {
     height: TOOLBAR_HEIGHT,
     marginHorizontal: 8,
-    // marginBottom: -60,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#D1D5DB',
     borderRadius: 12,
@@ -563,21 +473,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 12,
-    // shadow (iOS)
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    // elevation (Android)
     elevation: 10,
-  },
-  iconBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconLabel: {
-    marginTop: 4,
-    fontSize: 11,
-    color: '#374151',
   },
 });

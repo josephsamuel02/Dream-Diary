@@ -11,7 +11,7 @@ export default function DiaryInput() {
   const maxLength = 5000;
 
   return (
-    <SafeAreaView className="flex-1 bg-cozy_surface">
+    <SafeAreaView className="flex-1 bg-white">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
