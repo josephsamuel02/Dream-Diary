@@ -1,4 +1,3 @@
-// src/store/store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from 'redux';
 import devToolsEnhancer from 'redux-devtools-expo-dev-plugin';

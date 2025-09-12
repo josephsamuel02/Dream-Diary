@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -30,9 +30,9 @@ export default function DiaryToolbar({
 
       <TouchableOpacity onPress={() => toggleRecording()} hitSlop={8} style={localStyles.iconBtn}>
         <MaterialIcons
-          name={recorderIsRecording ? 'stop-circle' : 'keyboard-voice'}
+          name={recorderIsRecording ? 'stop-circle' : 'mic-none'}
           size={32}
-          color={recorderIsRecording ? '#e53935' : '#333'}
+          color={recorderIsRecording ? 'red' : '#333'}
         />
         <Text style={localStyles.iconLabel}>{recorderIsRecording ? 'Stop' : 'Voice'}</Text>
       </TouchableOpacity>
