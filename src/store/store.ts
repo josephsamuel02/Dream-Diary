@@ -1,6 +1,8 @@
 // src/store/store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from 'redux';
+import devToolsEnhancer from 'redux-devtools-expo-dev-plugin';
+
 import {
   persistStore,
   persistReducer,
@@ -29,6 +31,8 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 export const store = configureStore({
   reducer: persistedReducer,
+  devTools: false,
+  enhancers: (getDefaultEnhancers) => getDefaultEnhancers().concat(devToolsEnhancer()),
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {

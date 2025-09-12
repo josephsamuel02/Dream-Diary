@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+// app/components/DiaryInputBody.tsx  (or wherever your component lives)
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   TextInput,
@@ -10,12 +11,9 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  AppState,
-  AppStateStatus,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useAudioRecorder,
   useAudioRecorderState,
@@ -26,46 +24,36 @@ import {
 
 import DiaryToolbar, { AudioPlayer } from './diaryToolbar';
 
-type TextBlock = { id: string; type: 'text'; content: string };
-type ImageBlock = { id: string; type: 'image'; content: string };
-type AudioBlock = { id: string; type: 'audio'; content: string };
-type Block = TextBlock | ImageBlock | AudioBlock;
+// redux
+import { useAppDispatch, useAppSelector } from '~/store/hooks';
+import {
+  addBlockToEntry,
+  updateTextInEntry,
+  replaceBlocksForEntry,
+  selectEntryById,
+} from '~/store/slices/diarySlice';
 
-const TOOLBAR_HEIGHT = 68; // used for padding and layout
+type Block = { id: string; type: 'text' | 'image' | 'audio'; content: string };
+
+const TOOLBAR_HEIGHT = 68;
 const BASE_BOTTOM_PADDING = 10;
-
-const STORAGE_KEY = 'DiaryInput:draft:v1';
 const MEDIA_DIR = `${FileSystem.documentDirectory}diary_media/`;
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-const formatTime = (seconds = 0) => {
-  const s = Math.floor(seconds % 60)
-    .toString()
-    .padStart(2, '0');
-  const m = Math.floor((seconds % 3600) / 60)
-    .toString()
-    .padStart(2, '0');
-  return `${m}:${s}`;
-};
-
-export default function DiaryInputBody() {
-  const [blocks, setBlocks] = useState<Block[]>([{ id: genId(), type: 'text', content: '' }]);
+export default function DiaryInputBody({ entryId }: { entryId: string }) {
+  const dispatch = useAppDispatch();
+  // pull the entry from store
+  const entry = useAppSelector((s) => selectEntryById(s, entryId));
+  const blocks = useMemo(() => entry?.blocks ?? [], [entry?.blocks]);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
 
-  // keyboard state
   const animatedBottom = useRef(new Animated.Value(0)).current;
-
-  // ref map for text inputs so we can focus them
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const listRef = useRef<FlatList<Block> | null>(null);
 
-  // persistence helpers
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-
-  // ensure media dir exists
+  // ensure media dir (same as before)
   const ensureMediaDir = useCallback(async () => {
     try {
       const info = await FileSystem.getInfoAsync(MEDIA_DIR);
@@ -75,134 +63,47 @@ export default function DiaryInputBody() {
     }
   }, []);
 
-  // copy file into app media dir and return destination path
   const copyFileToAppAsync = useCallback(
     async (uri: string, fallbackExt = 'jpg') => {
       try {
         await ensureMediaDir();
-
-        // try to extract extension from uri
         const parts = uri.split('.');
         let ext = parts.length > 1 ? parts[parts.length - 1].split('?')[0] : fallbackExt;
-        // sanitize extension
         if (ext.length > 5 || ext.includes('/')) ext = fallbackExt;
-
         const filename = `${genId()}.${ext}`;
         const dest = `${MEDIA_DIR}${filename}`;
         await FileSystem.copyAsync({ from: uri, to: dest });
         return dest;
       } catch (e) {
         console.warn('Failed to copy file to app dir, using original uri', e);
-        // fall back to original uri if copy fails
         return uri;
       }
     },
     [ensureMediaDir]
   );
 
-  const saveDraftImmediate = useCallback(async (items: Block[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch (e) {
-      console.warn('Failed to save draft', e);
-    }
-  }, []);
-
-  const scheduleSaveDraft = useCallback(
-    (items: Block[]) => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        saveDraftImmediate(items);
-        saveTimerRef.current = null;
-      }, 800);
-    },
-    [saveDraftImmediate]
-  );
-
-  const loadDraft = useCallback(async () => {
-    try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Block[] | null;
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setBlocks(parsed);
-        setTimeout(() => {
-          try {
-            listRef.current?.scrollToEnd({ animated: false });
-          } catch (e) {
-            /* ignore */
-          }
-        }, 80);
-      }
-    } catch (e) {
-      console.warn('Failed to load draft', e);
-    }
-  }, []);
-
-  const clearDraft = useCallback(async () => {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
-    } catch (e) {
-      console.warn('Failed to clear draft', e);
-    }
-  }, []);
-
-  // ---------- initial load & appState listeners ----------
-  useEffect(() => {
-    loadDraft();
-    ensureMediaDir();
-
-    const sub = AppState.addEventListener?.('change', (next) => {
-      if (appStateRef.current.match(/active/) && next.match(/inactive|background/)) {
-        // app is going to background: save immediately
-        saveDraftImmediate(blocks);
-      }
-      appStateRef.current = next;
-    });
-
-    return () => {
-      sub?.remove?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once
-
-  // autosave when blocks change
-  useEffect(() => {
-    scheduleSaveDraft(blocks);
-  }, [blocks, scheduleSaveDraft]);
-
-  // save on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveDraftImmediate(blocks);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ---------- existing permission & audio init ----------
+  // initial: permissions etc (same as before)
   useEffect(() => {
     (async () => {
       try {
+        await ensureMediaDir();
         const perm = await requestRecordingPermissionsAsync();
         if (!perm.granted) {
           Alert.alert('Microphone permission required', 'Enable mic access to record audio notes.');
         }
         await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: false });
-
         const imgPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!imgPerm.granted) console.warn('Media library permission denied');
       } catch (e) {
         console.warn('Permission or audio init error:', e);
       }
     })();
-  }, []);
+  }, [ensureMediaDir]);
 
-  // animate toolbar up/down when keyboard appears/disappears
+  // keyboard animation (same)
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
     const onShow = (e: any) => {
       const height = e?.endCoordinates?.height ?? 0;
       Animated.timing(animatedBottom, {
@@ -211,91 +112,76 @@ export default function DiaryInputBody() {
         useNativeDriver: false,
       }).start();
     };
-
-    const onHide = () => {
+    const onHide = () =>
       Animated.timing(animatedBottom, {
         toValue: 0,
         duration: 200,
         useNativeDriver: false,
       }).start();
-    };
-
     const showSub = Keyboard.addListener(showEvent, onShow);
     const hideSub = Keyboard.addListener(hideEvent, onHide);
-
     return () => {
       showSub.remove();
       hideSub.remove();
     };
   }, [animatedBottom]);
 
-  // ---------- add/update blocks ----------
-  const addBlock = useCallback((type: Block['type'], content = '') => {
-    setBlocks((prev) => {
-      // When adding image/audio: remove all empty text inputs first
-      if (type === 'image' || type === 'audio') {
-        const cleaned = prev.filter((b) => !(b.type === 'text' && b.content.trim() === ''));
-        cleaned.push({ id: genId(), type, content } as ImageBlock | AudioBlock);
-        // Ensure a single trailing empty text input for the user to continue typing
-        cleaned.push({ id: genId(), type: 'text', content: '' });
-        // scroll to bottom after adding (allow render)
-        setTimeout(() => {
-          try {
-            const lastIndex = cleaned.length - 1;
-            if (lastIndex >= 0)
-              listRef.current?.scrollToIndex({ index: lastIndex, animated: true });
-          } catch (e) {
-            /* ignore */
-          }
-        }, 60);
-        return cleaned;
+  // ---------- actions that dispatch to entry-specific reducers ----------
+  const addTextBlockOptimistic = useCallback(() => {
+    // optimistic replace blocks: append a text block with generated id
+    const newId = genId();
+    const next: Block[] = [...blocks, { id: newId, type: 'text', content: '' }];
+    dispatch(replaceBlocksForEntry({ entryId, blocks: next }));
+    setTimeout(() => {
+      try {
+        listRef.current?.scrollToIndex({ index: next.length - 1, animated: true });
+      } catch (e: any) {
+        console.warn('Scroll to index error:', e);
       }
+      setTimeout(() => inputRefs.current[newId]?.focus?.(), 120);
+    }, 80);
+  }, [blocks, dispatch, entryId]);
 
-      // For text additions: just append the new text block
-      const appended = [...prev, { id: genId(), type: 'text', content } as TextBlock];
+  const addBlockViaReducer = useCallback(
+    (type: Block['type'], content = '') => {
+      dispatch(addBlockToEntry({ entryId, type, content }));
       setTimeout(() => {
         try {
-          listRef.current?.scrollToIndex({ index: appended.length - 1, animated: true });
-        } catch (e) {
-          /* ignore */
+          listRef.current?.scrollToEnd({ animated: true });
+        } catch (e: any) {
+          console.warn('Scroll to end error:', e);
         }
-      }, 60);
-      return appended;
-    });
-  }, []);
+      }, 80);
+    },
+    [dispatch, entryId]
+  );
 
-  const updateText = useCallback((index: number, text: string) => {
-    setBlocks((prev) => {
-      const copy = [...prev];
-      // guard: if index out of range, just return prev
-      if (index < 0 || index >= copy.length) return prev;
-      copy[index] = { ...(copy[index] as TextBlock), content: text };
-      return copy;
-    });
-  }, []);
+  const updateTextAtIndex = useCallback(
+    (index: number, text: string) => {
+      dispatch(updateTextInEntry({ entryId, index, content: text }));
+    },
+    [dispatch, entryId]
+  );
 
-  // ---------- image / camera pick with copy to app dir ----------
   const pickImageFromLibrary = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images ?? 'Images',
+        mediaTypes: ['images'],
         allowsEditing: true,
       });
-
-      // new expo returns { canceled: boolean, assets: [...] }
       if (!result.canceled && (result as any).assets?.length) {
         const src = (result as any).assets[0].uri;
         const dest = await copyFileToAppAsync(src, 'jpg');
-        addBlock('image', dest);
+        addBlockViaReducer('image', dest);
       } else if (!result.canceled && (result as any).uri) {
         const src = (result as any).uri;
         const dest = await copyFileToAppAsync(src, 'jpg');
-        addBlock('image', dest);
+        addBlockViaReducer('image', dest);
       }
     } catch (e) {
       console.error('Image pick error:', e);
     }
-  }, [addBlock, copyFileToAppAsync]);
+  }, [addBlockViaReducer, copyFileToAppAsync]);
 
   const takePhoto = useCallback(async () => {
     try {
@@ -305,25 +191,23 @@ export default function DiaryInputBody() {
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images ?? 'Images',
+        mediaTypes: ['images'],
         allowsEditing: true,
       });
-
       if (!result.canceled && (result as any).assets?.length) {
         const src = (result as any).assets[0].uri;
         const dest = await copyFileToAppAsync(src, 'jpg');
-        addBlock('image', dest);
+        addBlockViaReducer('image', dest);
       } else if (!result.canceled && (result as any).uri) {
         const src = (result as any).uri;
         const dest = await copyFileToAppAsync(src, 'jpg');
-        addBlock('image', dest);
+        addBlockViaReducer('image', dest);
       }
     } catch (e) {
       console.error('Take photo error:', e);
     }
-  }, [addBlock, copyFileToAppAsync]);
+  }, [addBlockViaReducer, copyFileToAppAsync]);
 
-  // ---------- audio record stop: copy to app dir and add block ----------
   const startRecording = useCallback(async () => {
     try {
       await recorder.prepareToRecordAsync();
@@ -340,71 +224,56 @@ export default function DiaryInputBody() {
       const uri = recorder.uri;
       if (uri) {
         const dest = await copyFileToAppAsync(uri, 'm4a');
-        addBlock('audio', dest);
+        addBlockViaReducer('audio', dest);
       } else console.warn('No recording uri after stop');
     } catch (e) {
       console.error('Stop recording error:', e);
     }
-  }, [recorder, addBlock, copyFileToAppAsync]);
+  }, [recorder, addBlockViaReducer, copyFileToAppAsync]);
 
-  // Focus helper: focus last text input (create one if none)
+  // Focus helper
   const focusLastTextInput = useCallback(() => {
-    const lastText = [...blocks].reverse().find((b) => b.type === 'text') as TextBlock | undefined;
-
+    const lastText = [...blocks].reverse().find((b) => b.type === 'text');
     if (lastText) {
       const ref = inputRefs.current[lastText.id];
       if (ref && typeof ref.focus === 'function') {
         ref.focus();
         return;
       }
-
       const idx = blocks.findIndex((b) => b.id === lastText.id);
       if (idx >= 0) {
         try {
           listRef.current?.scrollToIndex({ index: idx, animated: true });
-        } catch (e) {
-          // ignore if virtualization mismatch
+        } catch (e: any) {
+          console.warn('Scroll to index error:', e);
         }
         setTimeout(() => inputRefs.current[lastText.id]?.focus?.(), 90);
         return;
       }
     }
-
-    const newId = genId();
-    setBlocks((prev: any) => {
-      const next = [...prev, { id: newId, type: 'text', content: '' }];
-      setTimeout(() => {
-        try {
-          listRef.current?.scrollToIndex({ index: next.length - 1, animated: true });
-        } catch (e) {
-          /* ignore */
-        }
-      }, 80);
-      return next;
-    });
-    setTimeout(() => inputRefs.current[newId]?.focus?.(), 140);
-  }, [blocks]);
+    addTextBlockOptimistic();
+  }, [blocks, addTextBlockOptimistic]);
 
   const renderItem = ({ item, index }: { item: Block; index: number }) => {
     if (item.type === 'text') {
       return (
         <TextInput
           ref={(r: any) => (inputRefs.current[item.id] = r)}
-          className="bg-transparent my-2 rounded-md p-1 text-base"
+          className="bg-transparent text-gray-900 my-2 rounded-md p-1 text-lg"
           multiline
           value={item.content}
-          onChangeText={(t) => updateText(index, t)}
+          onChangeText={(t) => updateTextAtIndex(index, t)}
           placeholder="Write here..."
           placeholderTextColor="#9CA3AF"
-          onFocus={() => {
+          onFocus={() =>
             setTimeout(() => {
               try {
                 listRef.current?.scrollToIndex({ index, animated: true });
-              } catch (e) {
-                /* ignore */
+              } catch (e: any) {
+                console.warn('Scroll to index error:', e);
               }
-            }, 80);
-          }}
+            }, 80)
+          }
         />
       );
     }
@@ -416,7 +285,16 @@ export default function DiaryInputBody() {
 
   return (
     <View style={styles.container} className="bg-white">
-      <View style={styles.inner}>
+      <Animated.View
+        style={[
+          styles.inner,
+          {
+            paddingBottom: Animated.add(
+              animatedBottom,
+              new Animated.Value(TOOLBAR_HEIGHT + BASE_BOTTOM_PADDING + 24)
+            ),
+          },
+        ]}>
         <Pressable style={{ flex: 1 }} onPress={focusLastTextInput}>
           <FlatList
             ref={listRef}
@@ -425,18 +303,17 @@ export default function DiaryInputBody() {
             renderItem={renderItem}
             initialNumToRender={6}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: TOOLBAR_HEIGHT + BASE_BOTTOM_PADDING + 24 }}
           />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      {/* Animated floating toolbar */}
       <Animated.View
         pointerEvents="box-none"
         style={[
           styles.toolbarWrapper,
           {
             bottom: Animated.add(animatedBottom, new Animated.Value(BASE_BOTTOM_PADDING)),
+            marginBottom: -60,
           },
         ]}>
         <View style={styles.toolbar}>
@@ -452,16 +329,11 @@ export default function DiaryInputBody() {
   );
 }
 
+// copy styles from your previous file (omitted for brevity)
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { flex: 1, padding: 12 },
-  toolbarWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    marginBottom: -60,
-    backgroundColor: 'transparent',
-  },
+  inner: { flex: 1, padding: 10 },
+  toolbarWrapper: { position: 'absolute', left: 0, right: 0, backgroundColor: 'transparent' },
   toolbar: {
     height: TOOLBAR_HEIGHT,
     marginHorizontal: 8,

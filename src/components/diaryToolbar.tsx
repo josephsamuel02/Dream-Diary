@@ -115,7 +115,7 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     flex: 1,
-    marginVertical: 8,
+    marginVertical: 2,
   },
   iconBtn: { alignItems: 'center', justifyContent: 'center' },
   iconLabel: { marginTop: 4, fontSize: 11, color: '#374151' },
