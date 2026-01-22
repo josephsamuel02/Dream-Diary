@@ -14,16 +14,18 @@ import {
 } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DiarySlice from './slices/diarySlice';
+import ThemeSlice from './slices/themeSlice';
 
 const persistConfig = {
   key: 'root',
   version: 1,
   storage: AsyncStorage,
-  whitelist: ['diary'], // persist the diary slice
+  whitelist: ['diary', 'theme'], // persist the diary and theme slices
 };
 
 const rootReducer = combineReducers({
   diary: DiarySlice,
+  theme: ThemeSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

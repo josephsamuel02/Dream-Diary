@@ -31,4 +31,8 @@ const quotes = [
   { text: 'Dream it. Wish it. Do it.', author: 'Unknown' },
 ];
 
-export { greetingsByTime, quotes };
+const QUOTE_API_URL = 'https://zenquotes.io/api/quotes';
+// "https://zenquotes.io/api/random";
+
+
+export { greetingsByTime, quotes, QUOTE_API_URL };

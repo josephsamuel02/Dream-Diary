@@ -1,5 +1,6 @@
-// app/components/DiaryInputBody.tsx  (or wherever your component lives)
+// app/components/DiaryInputBody.tsx
 import { useEffect, useCallback, useRef, useMemo } from 'react';
+
 import {
   View,
   TextInput,
@@ -13,7 +14,7 @@ import {
   Pressable,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   useAudioRecorder,
   useAudioRecorderState,
@@ -26,6 +27,7 @@ import DiaryToolbar, { AudioPlayer } from './diaryToolbar';
 
 // redux
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
+
 import {
   addBlockToEntry,
   updateTextInEntry,
@@ -35,8 +37,8 @@ import {
 
 type Block = { id: string; type: 'text' | 'image' | 'audio'; content: string };
 
-const TOOLBAR_HEIGHT = 68;
-const BASE_BOTTOM_PADDING = 10;
+const TOOLBAR_HEIGHT = 56;
+const BASE_BOTTOM_PADDING = 0;
 const MEDIA_DIR = `${FileSystem.documentDirectory}diary_media/`;
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -254,6 +256,7 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
     addTextBlockOptimistic();
   }, [blocks, addTextBlockOptimistic]);
 
+  // render item
   const renderItem = ({ item, index }: { item: Block; index: number }) => {
     if (item.type === 'text') {
       return (
@@ -278,20 +281,20 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
       );
     }
     if (item.type === 'image')
-      return <Image source={{ uri: item.content }} className="my-2 h-56 w-full rounded-lg" />;
+      return <Image source={{ uri: item.content }} className="my-2 h-72 w-full rounded-lg" />;
     if (item.type === 'audio') return <AudioPlayer uri={item.content} />;
     return null;
   };
 
   return (
-    <View style={styles.container} className="bg-white">
+    <View style={styles.container}>
       <Animated.View
         style={[
           styles.inner,
           {
             paddingBottom: Animated.add(
               animatedBottom,
-              new Animated.Value(TOOLBAR_HEIGHT + BASE_BOTTOM_PADDING + 24)
+              new Animated.Value(TOOLBAR_HEIGHT + BASE_BOTTOM_PADDING)
             ),
           },
         ]}>
@@ -303,6 +306,7 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
             renderItem={renderItem}
             initialNumToRender={6}
             keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.listContent}
           />
         </Pressable>
       </Animated.View>
@@ -313,7 +317,6 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
           styles.toolbarWrapper,
           {
             bottom: Animated.add(animatedBottom, new Animated.Value(BASE_BOTTOM_PADDING)),
-            marginBottom: -60,
           },
         ]}>
         <View style={styles.toolbar}>
@@ -329,26 +332,40 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
   );
 }
 
-// copy styles from your previous file (omitted for brevity)
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  inner: { flex: 1, padding: 10 },
-  toolbarWrapper: { position: 'absolute', left: 0, right: 0, backgroundColor: 'transparent' },
+  container: { 
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  inner: { 
+    flex: 1, 
+    paddingHorizontal: 16,
+  },
+  listContent: {
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  toolbarWrapper: { 
+    position: 'absolute', 
+    left: 0, 
+    right: 0, 
+    backgroundColor: 'transparent',
+  },
   toolbar: {
     height: TOOLBAR_HEIGHT,
-    marginHorizontal: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#D1D5DB',
-    borderRadius: 12,
+    marginHorizontal: 0,
+    borderRadius: 0,
     backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowRadius: 8,
+    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
 });

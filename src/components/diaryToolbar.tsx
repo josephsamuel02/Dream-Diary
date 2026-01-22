@@ -19,20 +19,20 @@ export default function DiaryToolbar({
   return (
     <View style={localStyles.row}>
       <TouchableOpacity onPress={pickImageFromLibrary} hitSlop={8} style={localStyles.iconBtn}>
-        <Ionicons name="images-outline" size={28} color="#333" />
+        <Ionicons name="images-outline" size={20} color="#6B7280" />
         <Text style={localStyles.iconLabel}>Image</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={takePhoto} hitSlop={8} style={localStyles.iconBtn}>
-        <Ionicons name="camera-outline" size={28} color="#333" />
+        <Ionicons name="camera-outline" size={20} color="#6B7280" />
         <Text style={localStyles.iconLabel}>Photo</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => toggleRecording()} hitSlop={8} style={localStyles.iconBtn}>
         <MaterialIcons
           name={recorderIsRecording ? 'stop-circle' : 'mic-none'}
-          size={32}
-          color={recorderIsRecording ? 'red' : '#333'}
+          size={22}
+          color={recorderIsRecording ? '#EF4444' : '#6B7280'}
         />
         <Text style={localStyles.iconLabel}>{recorderIsRecording ? 'Stop' : 'Voice'}</Text>
       </TouchableOpacity>
@@ -115,10 +115,19 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     flex: 1,
-    marginVertical: 2,
   },
-  iconBtn: { alignItems: 'center', justifyContent: 'center' },
-  iconLabel: { marginTop: 4, fontSize: 11, color: '#374151' },
+  iconBtn: { 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
+  iconLabel: { 
+    marginTop: 2, 
+    fontSize: 10, 
+    color: '#9CA3AF',
+    fontFamily: 'RobotoMedium',
+  },
 
   audioCard: {
     marginVertical: 8,

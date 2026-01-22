@@ -1,5 +1,5 @@
 // components/MainTab.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   TouchableOpacity,
   View,
@@ -8,13 +8,15 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import {
   useAudioRecorder,
@@ -27,6 +29,7 @@ import {
 // redux
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { addEntry, selectEntries, addBlockToEntry } from '~/store/slices/diarySlice';
+import { selectThemeColors } from '~/store/slices/themeSlice';
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -68,9 +71,16 @@ const MainTab: React.FC = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
+  const themeColors = useAppSelector(selectThemeColors);
 
   // modal for camera options
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  // Animations
+  const expandAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // audio recorder
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -79,6 +89,47 @@ const MainTab: React.FC = () => {
   const [busy, setBusy] = useState(false);
 
   const todayIso = getLocalYYYYMMDD();
+  const hasTodayEntry = (entries ?? []).some((e) => e.date === todayIso);
+
+  // Pulse animation for recording
+  useEffect(() => {
+    if (isRecording) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isRecording]);
+
+  const toggleExpand = () => {
+    const toValue = expanded ? 0 : 1;
+    Animated.parallel([
+      Animated.spring(expandAnim, {
+        toValue,
+        friction: 6,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(rotateAnim, {
+        toValue,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    setExpanded(!expanded);
+  };
 
   // ensure today's entry exists and return id (create deterministically if needed)
   const createOrGetTodayEntry = useCallback(() => {
@@ -106,7 +157,6 @@ const MainTab: React.FC = () => {
   // Start/Stop recording
   const onMicPress = useCallback(async () => {
     try {
-      // If already recording -> stop
       if (isRecording) {
         await recorder.stop();
         const uri = recorder.uri;
@@ -114,9 +164,7 @@ const MainTab: React.FC = () => {
           setBusy(true);
           const dest = await copyFileToAppAsync(uri, 'm4a');
           const entryId = createOrGetTodayEntry();
-          // dispatch audio block
           dispatch(addBlockToEntry({ entryId, type: 'audio', content: dest }));
-          // open entry so user can see recording immediately
           openEntry(entryId);
           setBusy(false);
         } else {
@@ -125,16 +173,13 @@ const MainTab: React.FC = () => {
         return;
       }
 
-      // request permissions & init
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
-        // optionally show an alert or toast
         console.warn('Microphone permission not granted');
         return;
       }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: false });
 
-      // prepare & start
       await recorder.prepareToRecordAsync();
       recorder.record();
     } catch (e) {
@@ -210,7 +255,6 @@ const MainTab: React.FC = () => {
       const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: false });
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const uri = res.assets[0].uri;
-        // attempt to treat as image; if not an image, still copy and add
         const dest = await copyFileToAppAsync(uri, uri.split('.').pop() ?? 'bin');
         const entryId = createOrGetTodayEntry();
         dispatch(addBlockToEntry({ entryId, type: 'image', content: dest }));
@@ -221,57 +265,119 @@ const MainTab: React.FC = () => {
     }
   }, [createOrGetTodayEntry, dispatch, openEntry]);
 
-  // UI - mic icon shows recording state
+  const createNewEntry = () => {
+    const id = genId();
+    dispatch(
+      addEntry({
+        id,
+        date: todayIso,
+        title: '',
+      })
+    );
+    router.push(`/DiaryInput?entryId=${encodeURIComponent(id)}`);
+  };
+
+  // Animation interpolations
+  const cameraTranslateY = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -70],
+  });
+  const cameraOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
+
+  const micTranslateY = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -140],
+  });
+  const micOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
+
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '45deg'],
+  });
+
   return (
-    <View className=" absolute bottom-10 right-0 z-20 ml-auto w-28 flex-col items-center justify-around  gap-y-3 ">
-      {/* Camera (open modal with options) */}
-      <TouchableOpacity className="items-center" onPress={() => setCameraModalOpen(true)}>
-        <Feather
-          name="camera"
-          size={24}
-          className="items-center rounded-full bg-white p-3 text-cozy_accent shadow-md"
-        />
-      </TouchableOpacity>
-
-      {/* Mic: toggle record */}
-      <TouchableOpacity className="items-center" onPress={onMicPress}>
-        <Ionicons
-          name={isRecording ? 'mic' : 'mic-outline'}
-          size={30}
-          style={{
-            color: isRecording ? '#ffffff' : '#252525',
-            padding: 6,
-            borderRadius: 999,
-            backgroundColor: isRecording ? '#f72f2f' : '#ffffff',
-            overflow: 'hidden',
-          }}
-        />
-      </TouchableOpacity>
-
-      {/* Add button shown only if no entry today (keeps behavior you had) */}
-      {!(entries ?? []).some((e) => e.date === todayIso) && (
+    <View style={styles.container}>
+      {/* Expanded action buttons */}
+      <Animated.View
+        style={[
+          styles.actionButton,
+          {
+            transform: [{ translateY: micTranslateY }],
+            opacity: micOpacity,
+          },
+        ]}>
         <TouchableOpacity
-          onPress={() => {
-            const id = genId();
-            dispatch(
-              addEntry({
-                id,
-                date: todayIso,
-                title: '',
-              })
-            );
-            router.push(`/DiaryInput?entryId=${encodeURIComponent(id)}`);
-          }}
-          className="mb-5 items-center justify-center rounded-full bg-[#ffffff] p-3  shadow-md "
-          style={{ width: 'auto', height: 'auto' }}>
-          <Ionicons
-            name="add-outline"
-            size={55}
-            color="#252525"
-            className="items-center rounded-full shadow-lg"
-          />
+          onPress={onMicPress}
+          activeOpacity={0.8}
+          style={styles.secondaryButton}>
+          <Animated.View
+            style={[
+              styles.secondaryButtonInner,
+              { backgroundColor: themeColors.surface },
+              isRecording && styles.recordingButton,
+              { transform: [{ scale: isRecording ? pulseAnim : 1 }] },
+            ]}>
+            <Ionicons
+              name={isRecording ? 'stop' : 'mic'}
+              size={18}
+              color={isRecording ? '#fff' : themeColors.accent}
+            />
+          </Animated.View>
+          <Text style={[styles.buttonLabel, { color: themeColors.text }]}>
+            {isRecording ? 'Stop' : 'Record'}
+          </Text>
         </TouchableOpacity>
-      )}
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.actionButton,
+          {
+            transform: [{ translateY: cameraTranslateY }],
+            opacity: cameraOpacity,
+          },
+        ]}>
+        <TouchableOpacity
+          onPress={() => setCameraModalOpen(true)}
+          activeOpacity={0.8}
+          style={styles.secondaryButton}>
+          <View style={[styles.secondaryButtonInner, { backgroundColor: themeColors.surface }]}>
+            <Feather name="camera" size={18} color={themeColors.accent} />
+          </View>
+          <Text style={[styles.buttonLabel, { color: themeColors.text }]}>Photo</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Main FAB */}
+      <TouchableOpacity
+        onPress={hasTodayEntry ? toggleExpand : createNewEntry}
+        activeOpacity={0.9}
+        style={styles.fabContainer}>
+        <LinearGradient
+          colors={[themeColors.headerGradient[1], themeColors.headerGradient[0]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.fab, { shadowColor: themeColors.accent }]}>
+          <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
+            <Ionicons
+              name={hasTodayEntry ? 'add' : 'create-outline'}
+              size={26}
+              color="#fff"
+            />
+          </Animated.View>
+        </LinearGradient>
+        {!hasTodayEntry && (
+          <View style={[styles.fabBadge, { backgroundColor: themeColors.accent }]}>
+            <Text style={styles.fabBadgeText}>New</Text>
+          </View>
+        )}
+      </TouchableOpacity>
 
       {/* Camera options modal */}
       <Modal
@@ -282,23 +388,45 @@ const MainTab: React.FC = () => {
         <Pressable style={styles.modalOverlay} onPress={() => setCameraModalOpen(false)} />
 
         <View style={styles.centered}>
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.option} onPress={takePhoto}>
-              <Text style={styles.optionText}>Take Photo</Text>
+          <View style={[styles.card, { backgroundColor: themeColors.surface }]}>
+            <View style={[styles.cardHeader, { borderBottomColor: themeColors.text + '10' }]}>
+              <Text style={[styles.cardTitle, { color: themeColors.text }]}>Add Photo</Text>
+              <TouchableOpacity onPress={() => setCameraModalOpen(false)}>
+                <Ionicons name="close" size={22} color={themeColors.text + '50'} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.option} onPress={takePhoto} activeOpacity={0.7}>
+              <View style={[styles.optionIcon, { backgroundColor: themeColors.accent + '15' }]}>
+                <Ionicons name="camera-outline" size={20} color={themeColors.accent} />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionText, { color: themeColors.text }]}>Take Photo</Text>
+                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>Use your camera</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.text + '30'} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.option} onPress={chooseFromGallery}>
-              <Text style={styles.optionText}>Choose from Gallery</Text>
+            <TouchableOpacity style={styles.option} onPress={chooseFromGallery} activeOpacity={0.7}>
+              <View style={[styles.optionIcon, { backgroundColor: '#D1FAE520' }]}>
+                <Ionicons name="images-outline" size={20} color="#10B981" />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionText, { color: themeColors.text }]}>Choose from Gallery</Text>
+                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>Select existing photo</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.text + '30'} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.option} onPress={pickFile}>
-              <Text style={styles.optionText}>Pick File (browser)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.option, styles.cancel]}
-              onPress={() => setCameraModalOpen(false)}>
-              <Text style={[styles.optionText, styles.cancelText]}>Cancel</Text>
+            <TouchableOpacity style={styles.option} onPress={pickFile} activeOpacity={0.7}>
+              <View style={[styles.optionIcon, { backgroundColor: '#6366F115' }]}>
+                <Ionicons name="folder-outline" size={20} color="#6366F1" />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionText, { color: themeColors.text }]}>Browse Files</Text>
+                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>Pick from file manager</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.text + '30'} />
             </TouchableOpacity>
           </View>
         </View>
@@ -306,8 +434,8 @@ const MainTab: React.FC = () => {
 
       {/* busy indicator when copying/deleting etc */}
       {busy && (
-        <View style={{ marginTop: 6 }}>
-          <ActivityIndicator size="small" />
+        <View style={styles.busyOverlay}>
+          <ActivityIndicator size="large" color={themeColors.accent} />
         </View>
       )}
     </View>
@@ -315,48 +443,143 @@ const MainTab: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  actionButton: {
+    position: 'absolute',
+    bottom: 0,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+  },
+  secondaryButtonInner: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  recordingButton: {
+    backgroundColor: '#EF4444',
+  },
+  buttonLabel: {
+    marginTop: 3,
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'RobotoMedium',
+  },
+  fabContainer: {
+    position: 'relative',
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  fabBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  fabBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'RobotoMedium',
+  },
   modalOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   centered: {
     flex: 1,
     justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 110, // sit above the bottom tab area
+    paddingHorizontal: 16,
+    paddingBottom: 32,
   },
   card: {
-    width: 220,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 8,
-    // subtle shadow
+    borderRadius: 18,
+    paddingVertical: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'PoppinsBold',
   },
   option: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 18,
+  },
+  optionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  optionContent: {
+    flex: 1,
   },
   optionText: {
-    fontSize: 15,
-    color: '#111827',
-    textAlign: 'center',
-  },
-  cancel: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E7EB',
-  },
-  cancelText: {
-    color: '#6B7280',
+    fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'RobotoMedium',
+  },
+  optionSubtext: {
+    fontSize: 11,
+    marginTop: 1,
+    fontFamily: 'RobotoRegular',
+  },
+  busyOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 32,
   },
 });
 

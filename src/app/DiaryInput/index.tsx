@@ -1,6 +1,6 @@
 // app/DiaryInput.tsx
 import { useSearchParams } from 'expo-router/build/hooks';
-import React, { useEffect, useRef, useState } from 'react';
+import  { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DiaryInputBody from '~/components/diaryInputBody';
@@ -15,6 +16,7 @@ import DiaryInputBody from '~/components/diaryInputBody';
 // redux
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { selectEntries, addEntry, updateEntryMeta } from '~/store/slices/diarySlice';
+import { selectThemeColors } from '~/store/slices/themeSlice';
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -22,9 +24,11 @@ export default function DiaryInput() {
   const { entryId: paramEntryId } = useSearchParams() as { entryId?: string };
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
+  const themeColors = useAppSelector(selectThemeColors);
 
   const [title, setTitle] = useState('');
   const [entryId, setEntryId] = useState<string | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Today's ISO date (yyyy-mm-dd)
@@ -101,31 +105,34 @@ export default function DiaryInput() {
   if (!entryId) {
     // simple loading while entry is created/identified
     return (
-      <SafeAreaView className="flex-1 bg-white">
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={themeColors.accent} />
+          <Text style={styles.loadingText}>Loading your entry...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        className="flex-1"
+        style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View className="flex-1 p-2">
-          {/* Title */}
-          <View className="relative mb-2">
-            {title.length === 0 && (
-              <Text className="text-gray-300 absolute left-3 top-3 text-lg ">Title...</Text>
-            )}
-            <TextInput
-              className="rounded-lg border border-[#a09997de] p-3 font-roboto-medium text-xl font-semibold"
-              value={title}
-              onChangeText={onChangeTitle}
-            />
-          </View>
+        <View style={styles.content}>
+          {/* Title Input */}
+          <TextInput
+            style={[
+              styles.titleInput,
+              { borderColor: isFocused ? themeColors.accent : '#E5E7EB' },
+            ]}
+            value={title}
+            onChangeText={onChangeTitle}
+            placeholder="Title..."
+            placeholderTextColor="#9CA3AF"
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
 
           {/* Pass the resolved entryId into the body */}
           <DiaryInputBody entryId={entryId} />
@@ -134,3 +141,37 @@ export default function DiaryInput() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'RobotoRegular',
+    color: '#6B7280',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+  },
+  titleInput: {
+    fontSize: 16,
+    fontFamily: 'PoppinsBold',
+    fontWeight: '600',
+    color: '#1F2937',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    backgroundColor: '#fff',
+  },
+});

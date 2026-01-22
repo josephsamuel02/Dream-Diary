@@ -1,11 +1,19 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Platform, StatusBar, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAppSelector } from "~/store/hooks";
+import { selectThemeColors } from "~/store/slices/themeSlice";
 
 const DiaryInputHeader = ({ navigation }: any) => {
   const [currentDate, setCurrentDate] = useState("");
   const [currentTime, setCurrentTime] = useState("");
+  const insets = useSafeAreaInsets();
+  const themeColors = useAppSelector(selectThemeColors);
+
+  const statusBarHeight = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0;
+  const topPadding = Math.max(insets.top, statusBarHeight);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -37,30 +45,107 @@ const DiaryInputHeader = ({ navigation }: any) => {
 
   return (
     <LinearGradient
-      colors={["#D97706", "#F5EDE0"]}
-      locations={[0, 0.99]}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      className="flex h-[80px] w-full flex-col px-2 pt-1"
+      colors={themeColors.headerGradient}
+      locations={[0, 0.4, 1]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0.3, y: 1 }}
+      style={{
+        paddingTop: topPadding + 8,
+        paddingBottom: 16,
+        paddingHorizontal: 20,
+      }}
     >
-      <View className="bg-orange-500 flex-row items-center px-3 pt-10">
+      {/* Decorative circles */}
+      <View
+        style={{
+          position: "absolute",
+          right: -32,
+          top: -32,
+          width: 128,
+          height: 128,
+          borderRadius: 64,
+          backgroundColor: "rgba(255,255,255,0.1)",
+          transform: [{ scale: 1.2 }],
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          right: 80,
+          top: 48,
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: "rgba(255,255,255,0.05)",
+        }}
+      />
+
+      <View style={styles.headerContent}>
         {/* Back button */}
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={27} color="black" />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
 
         {/* Date + Time */}
-        <View className="bg-orange-500 w-[97%] flex-row justify-end px-3 pt-1">
-          <Text className="pr-7 font-poppins text-xl font-bold text-cozy_text">
-            {currentDate}
-          </Text>
-          <Text className="text-md ml-auto font-poppins font-bold text-cozy_text">
-            {currentTime}
-          </Text>
+        <View style={styles.dateTimeContainer}>
+          <Text style={styles.dateText}>{currentDate}</Text>
+          <View style={styles.timeBadge}>
+            <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.timeText}>{currentTime}</Text>
+          </View>
         </View>
+
+        {/* Spacer for alignment */}
+        <View style={{ width: 40 }} />
       </View>
     </LinearGradient>
   );
 };
+
+const styles = StyleSheet.create({
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dateTimeContainer: {
+    alignItems: "center",
+  },
+  dateText: {
+    fontFamily: "PoppinsBold",
+    fontSize: 18,
+    color: "#fff",
+    textShadowColor: "rgba(0,0,0,0.1)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  timeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+    gap: 4,
+  },
+  timeText: {
+    fontFamily: "RobotoMedium",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+  },
+});
 
 export default DiaryInputHeader;
