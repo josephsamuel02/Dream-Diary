@@ -15,7 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { greetingsByTime, QUOTE_API_URL } from '../util/greetings';
+import { greetingsByTime, QUOTE_API_URL, quotes as fallbackQuotes } from '../util/greetings';
 import { useAppSelector } from '~/store/hooks';
 import { selectEntries } from '~/store/slices/diarySlice';
 import {
@@ -33,7 +33,7 @@ const Index = () => {
   const quotesRef = useRef<FlatList>(null);
   const indexRef = useRef(0);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
-  const [quotes, setQuotes] = useState<{ text: string; author: string }[]>([]);
+  const [quotes, setQuotes] = useState<{ text: string; author: string }[]>(fallbackQuotes);
   const [loading, setLoading] = useState(true);
 
   // Theme
@@ -79,9 +79,16 @@ const Index = () => {
   // Fetch multiple quotes from ZenQuotes
   useEffect(() => {
     fetch(QUOTE_API_URL)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.json();
+      })
       .then((data) => {
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0 && data[0].q) {
+          // Check if we hit the ZenQuotes rate limit
+          if (data[0].a === 'zenquotes.io' || data[0].q.includes('Too many requests')) {
+            throw new Error('ZenQuotes API rate limit reached');
+          }
           const formatted = data.map((q: any) => ({
             text: q.q,
             author: q.a,
@@ -91,7 +98,9 @@ const Index = () => {
         setLoading(false);
       })
       .catch((err) => {
-        console.error(err);
+        console.error('Quote fetch error:', err);
+        // Ensure quotes state is not empty, it will rely on the fallbackQuotes
+        if (quotes.length === 0) setQuotes(fallbackQuotes);
         setLoading(false);
       });
   }, []);
@@ -147,21 +156,21 @@ const Index = () => {
       // Create variations based on the current theme
       const baseAccent = themeColors.accent;
       const baseText = themeColors.text;
-      
+
       // Generate theme-based gradient variations
       const getThemeVariation = (idx: number) => {
         const variations = [
-          { 
+          {
             colors: [themeColors.headerGradient[0], themeColors.headerGradient[1], themeColors.headerGradient[0] + 'E0'],
             accent: '#fff',
             textColor: '#fff',
           },
-          { 
+          {
             colors: [themeColors.surface, themeColors.background, themeColors.surface],
             accent: themeColors.accent,
             textColor: themeColors.text,
           },
-          { 
+          {
             colors: [themeColors.accent + '20', themeColors.accent + '10', themeColors.surface],
             accent: themeColors.accent,
             textColor: themeColors.text,
@@ -169,7 +178,7 @@ const Index = () => {
         ];
         return variations[idx % variations.length];
       };
-      
+
       const variation = getThemeVariation(index);
 
       return (
@@ -217,7 +226,7 @@ const Index = () => {
                 opacity: 0.06,
               }}
             />
-            
+
             {/* Quote icon */}
             <View style={{ position: 'absolute', top: 12, left: 14, opacity: 0.15 }}>
               <Ionicons name="chatbubble-ellipses" size={20} color={variation.accent} />
@@ -274,7 +283,7 @@ const Index = () => {
     [themeColors]
   );
 
-  // Quote pagination dots - now uses theme colors
+  // Quote pagination dots
   const renderDots = () => (
     <View className="mt-3 flex-row items-center justify-center">
       {quotes.slice(0, 5).map((_, i) => {
@@ -383,7 +392,7 @@ const Index = () => {
                 flex: 1,
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: '#D1FAE5',
+                backgroundColor: themeColors.surface,
                 borderRadius: 12,
                 paddingVertical: 10,
                 paddingHorizontal: 12,
@@ -393,7 +402,7 @@ const Index = () => {
                   width: 32,
                   height: 32,
                   borderRadius: 10,
-                  backgroundColor: '#10B981',
+                  backgroundColor: themeColors.accent,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginRight: 10,
@@ -401,10 +410,10 @@ const Index = () => {
                 <Ionicons name="trending-up" size={16} color="#fff" />
               </View>
               <View>
-                <Text className="font-poppins-bold text-lg leading-5 text-nature_text">
+                <Text style={{ color: themeColors.text }} className="font-poppins-bold text-lg leading-5">
                   {thisWeekEntries}
                 </Text>
-                <Text className="font-roboto text-[10px] text-nature_text/60">This Week</Text>
+                <Text style={{ color: themeColors.text, opacity: 0.6 }} className="font-roboto text-[10px]">This Week</Text>
               </View>
             </View>
           </View>
@@ -413,12 +422,12 @@ const Index = () => {
         {/* Quotes Section */}
         <View className="mb-4">
           {/* Section header */}
-          <View className="mb-2 flex-row items-center px-5">
+          {!loading && <View className="mb-2 flex-row items-center px-5">
             <Ionicons name="sparkles-outline" size={14} color={themeColors.accent} />
             <Text style={{ color: themeColors.accent }} className="ml-2 font-roboto-medium text-[10px] uppercase tracking-widest">
               Daily Inspiration
             </Text>
-          </View>
+          </View>}
 
           {loading ? (
             <View className="h-[110px] items-center justify-center">

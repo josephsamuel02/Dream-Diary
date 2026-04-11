@@ -51,14 +51,21 @@ const CustomHeader = () => {
       sublabel: 'App preferences',
       onPress: () => {
         setMenuOpen(false);
-        // TODO: Navigate to settings
-        alert('Settings coming soon!');
+        router.push('/Settings');
       },
     },
     {
       icon: 'person-outline' as const,
       label: 'Account',
       sublabel: 'Profile & data',
+      onPress: () => {
+        setMenuOpen(false);
+        router.push('/Account');
+      },
+    }, {
+      icon: 'information-circle-outline' as const,
+      label: 'About us',
+      sublabel: 'App info & contact',
       onPress: () => {
         setMenuOpen(false);
         router.push('/About');
@@ -112,11 +119,6 @@ const CustomHeader = () => {
 
           {/* Action buttons */}
           <View className="flex-row items-center gap-2">
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: 'rgba(0,0,0,0.15)' }]}
-              activeOpacity={0.7}>
-              <Ionicons name="search-outline" size={20} color="#fff" />
-            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: 'rgba(0,0,0,0.15)' }]}
               activeOpacity={0.7}>

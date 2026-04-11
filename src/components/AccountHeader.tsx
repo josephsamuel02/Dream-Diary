@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAppSelector } from '~/store/hooks';
 import { selectThemeColors } from '~/store/slices/themeSlice';
 
-const AboutHeader = () => {
+const AccountHeader = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const themeColors = useAppSelector(selectThemeColors);
@@ -61,8 +61,8 @@ const AboutHeader = () => {
 
         {/* Title */}
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>About Us</Text>
-          <Text style={styles.subtitle}>Application details</Text>
+          <Text style={styles.title}>Account</Text>
+          <Text style={styles.subtitle}>Your profile</Text>
         </View>
 
         {/* Spacer for alignment */}
@@ -107,4 +107,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AboutHeader;
+export default AccountHeader;

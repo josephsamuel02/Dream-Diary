@@ -15,17 +15,19 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DiarySlice from './slices/diarySlice';
 import ThemeSlice from './slices/themeSlice';
+import SettingsSlice from './slices/settingsSlice';
 
 const persistConfig = {
   key: 'root',
   version: 1,
   storage: AsyncStorage,
-  whitelist: ['diary', 'theme'], // persist the diary and theme slices
+  whitelist: ['diary', 'theme', 'settings'], // persist the diary, theme and settings slices
 };
 
 const rootReducer = combineReducers({
   diary: DiarySlice,
   theme: ThemeSlice,
+  settings: SettingsSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

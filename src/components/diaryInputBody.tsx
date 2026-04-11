@@ -294,7 +294,7 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
           {
             paddingBottom: Animated.add(
               animatedBottom,
-              new Animated.Value(TOOLBAR_HEIGHT + BASE_BOTTOM_PADDING)
+              new Animated.Value(BASE_BOTTOM_PADDING + 80)
             ),
           },
         ]}>
@@ -319,14 +319,12 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
             bottom: Animated.add(animatedBottom, new Animated.Value(BASE_BOTTOM_PADDING)),
           },
         ]}>
-        <View style={styles.toolbar}>
-          <DiaryToolbar
-            pickImageFromLibrary={pickImageFromLibrary}
-            takePhoto={takePhoto}
-            recorderIsRecording={recorderState.isRecording}
-            toggleRecording={() => (recorderState.isRecording ? stopRecording() : startRecording())}
-          />
-        </View>
+        <DiaryToolbar
+          pickImageFromLibrary={pickImageFromLibrary}
+          takePhoto={takePhoto}
+          recorderIsRecording={recorderState.isRecording}
+          toggleRecording={() => (recorderState.isRecording ? stopRecording() : startRecording())}
+        />
       </Animated.View>
     </View>
   );
@@ -347,25 +345,9 @@ const styles = StyleSheet.create({
   },
   toolbarWrapper: { 
     position: 'absolute', 
-    left: 0, 
-    right: 0, 
-    backgroundColor: 'transparent',
-  },
-  toolbar: {
-    height: TOOLBAR_HEIGHT,
-    marginHorizontal: 0,
-    borderRadius: 0,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
+    right: 20,
+    bottom: 0,
     alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    zIndex: 100,
   },
 });

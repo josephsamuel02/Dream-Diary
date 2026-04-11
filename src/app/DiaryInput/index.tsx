@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import DiaryInputBody from '~/components/diaryInputBody';
 
 // redux
@@ -105,17 +104,17 @@ export default function DiaryInput() {
   if (!entryId) {
     // simple loading while entry is created/identified
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={themeColors.accent} />
           <Text style={styles.loadingText}>Loading your entry...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
+    return (
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -138,7 +137,7 @@ export default function DiaryInput() {
           <DiaryInputBody entryId={entryId} />
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
