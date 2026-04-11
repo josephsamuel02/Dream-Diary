@@ -4,7 +4,6 @@ import { Platform } from 'react-native';
 // Handle incoming notifications while the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
@@ -13,9 +12,9 @@ Notifications.setNotificationHandler({
 });
 
 export async function scheduleDailyReminder(
-  enabled: boolean, 
-  morningTime: string, 
-  nightTime: string, 
+  enabled: boolean,
+  morningTime: string,
+  nightTime: string,
   soundEnabled: boolean
 ) {
   // Clear existing notifications to prevent duplicates
@@ -25,13 +24,13 @@ export async function scheduleDailyReminder(
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
-  
+
   // Ask for permission if not already granted
   if (existingStatus !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
-  
+
   if (finalStatus !== 'granted') {
     return;
   }
@@ -54,7 +53,7 @@ export async function scheduleDailyReminder(
   if (!isNaN(morningHr)) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "Good Morning! ☀️",
+        title: 'Good Morning! ☀️',
         body: "Have a great day! Don't forget to write down your morning thoughts and nightly dreams.",
         sound: soundEnabled,
       },
@@ -71,8 +70,8 @@ export async function scheduleDailyReminder(
   if (!isNaN(nightHr)) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "Time to reflect ✍️",
-        body: "How was your day? Take a moment to jot down your thoughts, reflections, and dreams in your diary.",
+        title: 'Time to reflect ✍️',
+        body: 'How was your day? Take a moment to jot down your thoughts, reflections, and dreams in your diary.',
         sound: soundEnabled,
       },
       trigger: {

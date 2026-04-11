@@ -32,6 +32,7 @@ import {
   addBlockToEntry,
   updateTextInEntry,
   replaceBlocksForEntry,
+  removeBlockFromEntry,
   selectEntryById,
 } from '~/store/slices/diarySlice';
 
@@ -93,7 +94,7 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
         if (!perm.granted) {
           Alert.alert('Microphone permission required', 'Enable mic access to record audio notes.');
         }
-        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: false });
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
         const imgPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!imgPerm.granted) console.warn('Media library permission denied');
       } catch (e) {
@@ -281,8 +282,37 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
       );
     }
     if (item.type === 'image')
-      return <Image source={{ uri: item.content }} className="my-2 h-72 w-full rounded-lg" />;
-    if (item.type === 'audio') return <AudioPlayer uri={item.content} />;
+      return (
+        <Pressable
+          onLongPress={() =>
+            Alert.alert('Delete image', 'Remove this image from the entry?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
+              },
+            ])
+          }>
+          <Image source={{ uri: item.content }} className="my-2 h-72 w-full rounded-lg" />
+        </Pressable>
+      );
+    if (item.type === 'audio')
+      return (
+        <Pressable
+          onLongPress={() =>
+            Alert.alert('Delete audio', 'Remove this audio clip from the entry?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
+              },
+            ])
+          }>
+          <AudioPlayer uri={item.content} />
+        </Pressable>
+      );
     return null;
   };
 
@@ -331,20 +361,20 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { 
+  container: {
     flex: 1,
     backgroundColor: '#fff',
   },
-  inner: { 
-    flex: 1, 
+  inner: {
+    flex: 1,
     paddingHorizontal: 16,
   },
   listContent: {
     paddingTop: 8,
     paddingBottom: 8,
   },
-  toolbarWrapper: { 
-    position: 'absolute', 
+  toolbarWrapper: {
+    position: 'absolute',
     right: 20,
     bottom: 0,
     alignItems: 'center',

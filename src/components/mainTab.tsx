@@ -178,7 +178,7 @@ const MainTab: React.FC = () => {
         console.warn('Microphone permission not granted');
         return;
       }
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: false });
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
 
       await recorder.prepareToRecordAsync();
       recorder.record();
@@ -312,10 +312,7 @@ const MainTab: React.FC = () => {
             opacity: micOpacity,
           },
         ]}>
-        <TouchableOpacity
-          onPress={onMicPress}
-          activeOpacity={0.8}
-          style={styles.secondaryButton}>
+        <TouchableOpacity onPress={onMicPress} activeOpacity={0.8} style={styles.secondaryButton}>
           <Animated.View
             style={[
               styles.secondaryButtonInner,
@@ -365,11 +362,7 @@ const MainTab: React.FC = () => {
           end={{ x: 1, y: 1 }}
           style={[styles.fab, { shadowColor: themeColors.accent }]}>
           <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
-            <Ionicons
-              name={hasTodayEntry ? 'add' : 'create-outline'}
-              size={26}
-              color="#fff"
-            />
+            <Ionicons name={hasTodayEntry ? 'add' : 'create-outline'} size={26} color="#fff" />
           </Animated.View>
         </LinearGradient>
         {!hasTodayEntry && (
@@ -402,7 +395,9 @@ const MainTab: React.FC = () => {
               </View>
               <View style={styles.optionContent}>
                 <Text style={[styles.optionText, { color: themeColors.text }]}>Take Photo</Text>
-                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>Use your camera</Text>
+                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>
+                  Use your camera
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={themeColors.text + '30'} />
             </TouchableOpacity>
@@ -412,8 +407,12 @@ const MainTab: React.FC = () => {
                 <Ionicons name="images-outline" size={20} color="#10B981" />
               </View>
               <View style={styles.optionContent}>
-                <Text style={[styles.optionText, { color: themeColors.text }]}>Choose from Gallery</Text>
-                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>Select existing photo</Text>
+                <Text style={[styles.optionText, { color: themeColors.text }]}>
+                  Choose from Gallery
+                </Text>
+                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>
+                  Select existing photo
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={themeColors.text + '30'} />
             </TouchableOpacity>
@@ -424,7 +423,9 @@ const MainTab: React.FC = () => {
               </View>
               <View style={styles.optionContent}>
                 <Text style={[styles.optionText, { color: themeColors.text }]}>Browse Files</Text>
-                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>Pick from file manager</Text>
+                <Text style={[styles.optionSubtext, { color: themeColors.text + '60' }]}>
+                  Pick from file manager
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={themeColors.text + '30'} />
             </TouchableOpacity>
