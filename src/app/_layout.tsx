@@ -15,6 +15,7 @@ import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
 import { scheduleDailyReminder } from '../util/notifications';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import '../../global.css';
 import CustomHeader from '../components/mainNav';
 import DiaryInputHeader from '~/components/diaryInputHeader';
@@ -24,10 +25,13 @@ import AccountHeader from '~/components/AccountHeader';
 import SettingsHeader from '~/components/settingsHeader';
 import AboutHeader from '~/components/aboutHeader';
 import LockScreen from '~/components/LockScreen';
+import SyncManager from '~/components/SyncManager';
 import { persistor, store } from '~/store/store';
+import type { ThemeKey } from '~/store/slices/themeSlice';
 
 export default function Layout() {
   const [isLocked, setIsLocked] = useState(false);
+  const [savedTheme, setSavedTheme] = useState<ThemeKey>('cozy');
 
   const [fontsLoaded] = useFonts({
     PoppinsRegular: Poppins_400Regular,
@@ -37,10 +41,26 @@ export default function Layout() {
     GreatVibes: GreatVibes_400Regular,
   });
 
-  // Show splash for at least 2 seconds while fonts load
+  // Read the persisted theme from AsyncStorage before the store rehydrates
+  useEffect(() => {
+    AsyncStorage.getItem('persist:root').then((raw) => {
+      if (!raw) return;
+      try {
+        const outer = JSON.parse(raw);
+        if (outer.theme) {
+          const themeState = JSON.parse(outer.theme);
+          if (themeState.currentTheme) setSavedTheme(themeState.currentTheme as ThemeKey);
+        }
+      } catch {
+        // fall back to default
+      }
+    });
+  }, []);
+
+  // Show splash for at least 5 seconds while fonts load
   const [splashDone, setSplashDone] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setSplashDone(true), 2000);
+    const t = setTimeout(() => setSplashDone(true), 5000);
     return () => clearTimeout(t);
   }, []);
 
@@ -48,7 +68,7 @@ export default function Layout() {
   const showSplash = !fontsLoaded || !splashDone;
   if (showSplash) {
     const Splash = require('../components/Splash').default;
-    return <Splash />;
+    return <Splash fontsLoaded={fontsLoaded} themeKey={savedTheme} />;
   }
 
   return (
@@ -75,6 +95,7 @@ export default function Layout() {
         ) : (
           <SafeAreaProvider>
             <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+              <SyncManager />
               <Stack>
                 <Stack.Screen
                   name="index"

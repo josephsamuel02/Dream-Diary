@@ -10,17 +10,22 @@ export interface SettingsState {
   username: string;
   email: string;
   profilePhoto: string | null;
+  // Cloud sync
+  cloudSyncEnabled: boolean;
+  lastSyncedAt: string | null; // ISO timestamp of last successful sync
 }
 
 const initialState: SettingsState = {
   notificationsEnabled: true,
-  morningReminderTime: '09:00', // Default 9 AM
-  nightReminderTime: '20:00',   // Default 8 PM
+  morningReminderTime: '09:00',
+  nightReminderTime: '20:00',
   biometricLock: false,
   soundEnabled: true,
   username: 'Dreamer',
   email: 'dreamer@example.com',
   profilePhoto: null,
+  cloudSyncEnabled: false,
+  lastSyncedAt: null,
 };
 
 const settingsSlice = createSlice({
@@ -49,6 +54,12 @@ const settingsSlice = createSlice({
     updateProfilePhoto: (state, action: PayloadAction<string | null>) => {
       state.profilePhoto = action.payload;
     },
+    setCloudSync: (state, action: PayloadAction<boolean>) => {
+      state.cloudSyncEnabled = action.payload;
+    },
+    setLastSyncedAt: (state, action: PayloadAction<string | null>) => {
+      state.lastSyncedAt = action.payload;
+    },
   },
 });
 
@@ -60,6 +71,8 @@ export const {
   toggleSound,
   updateAccountProfile,
   updateProfilePhoto,
+  setCloudSync,
+  setLastSyncedAt,
 } = settingsSlice.actions;
 
 export const selectSettings = (state: RootState) => state.settings;
