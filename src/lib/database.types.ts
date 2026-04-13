@@ -9,13 +9,15 @@ export interface UserProfile {
   email: string;
   username: string;
   about: string;
+  profile_image: string | null;
 }
 
 export type UserProfileInsert = Pick<UserProfile, 'email' | 'username'> & {
   about?: string;
+  profile_image?: string | null;
 };
 
-export type UserProfileUpdate = Partial<Pick<UserProfile, 'username' | 'about'>>;
+export type UserProfileUpdate = Partial<Pick<UserProfile, 'username' | 'about' | 'profile_image'>>;
 
 /**
  * Type definitions matching the public.diary_input table schema.

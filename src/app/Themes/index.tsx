@@ -7,6 +7,9 @@ import {
   ScrollView,
   Image,
   Alert,
+  Modal,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,14 +29,37 @@ import {
   THEMES,
   ThemeKey,
 } from '~/store/slices/themeSlice';
+import {
+  selectSettings,
+  setDiaryFont,
+  DiaryFontKey,
+} from '~/store/slices/settingsSlice';
 
 const THEME_OPTIONS: { key: ThemeKey; name: string; emoji: string }[] = [
   { key: 'cozy', name: 'Cozy', emoji: '🍂' },
-  { key: 'clean', name: 'Clean', emoji: '✨' },
+  { key: 'night', name: 'Night', emoji: '🌃' },
   { key: 'dreamy', name: 'Dreamy', emoji: '🌙' },
   { key: 'nature', name: 'Nature', emoji: '🌿' },
   { key: 'warm', name: 'Warm', emoji: '☀️' },
   { key: 'dark', name: 'Dark', emoji: '🌑' },
+];
+
+type FontOption = {
+  key: DiaryFontKey;
+  label: string;
+  description: string;
+  sample: string;
+};
+
+const FONT_OPTIONS: FontOption[] = [
+  { key: 'RobotoRegular',   label: 'Default',         description: 'Clean & modern',     sample: 'The quick brown fox...' },
+  { key: 'Lora',            label: 'Lora',             description: 'Classic serif',       sample: 'The quick brown fox...' },
+  { key: 'Merriweather',    label: 'Merriweather',     description: 'Literary & warm',     sample: 'The quick brown fox...' },
+  { key: 'PlayfairDisplay', label: 'Playfair',         description: 'Elegant editorial',   sample: 'The quick brown fox...' },
+  { key: 'Caveat',          label: 'Caveat',           description: 'Casual handwriting',  sample: 'The quick brown fox...' },
+  { key: 'DancingScript',   label: 'Dancing Script',   description: 'Flowing script',      sample: 'The quick brown fox...' },
+  { key: 'Pacifico',        label: 'Pacifico',         description: 'Friendly & round',    sample: 'The quick brown fox...' },
+  { key: 'NunitoRegular',   label: 'Nunito',           description: 'Soft & readable',     sample: 'The quick brown fox...' },
 ];
 
 const MEDIA_DIR = `${FileSystem.documentDirectory}theme_backgrounds/`;
@@ -52,7 +78,12 @@ export default function ThemesScreen() {
   const currentTheme = useAppSelector(selectCurrentTheme);
   const backgroundImage = useAppSelector(selectBackgroundImage);
   const backgroundOpacity = useAppSelector(selectBackgroundOpacity);
+  const settings = useAppSelector(selectSettings);
+  const currentFont = settings.diaryFont ?? 'RobotoRegular';
   const [loading, setLoading] = useState(false);
+  const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
+
+  const selectedFontOption = FONT_OPTIONS.find((f) => f.key === currentFont) ?? FONT_OPTIONS[0];
 
   const handleThemeSelect = (themeKey: ThemeKey) => {
     dispatch(setTheme(themeKey));
@@ -126,7 +157,7 @@ export default function ThemesScreen() {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Appearance</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Themes</Text>
         <Text style={[styles.subtitle, { color: colors.text, opacity: 0.6 }]}>
           Customize your diary's look and feel
         </Text>
@@ -140,7 +171,7 @@ export default function ThemesScreen() {
         </View>
 
         <View style={styles.themesGrid}>
-          {THEME_OPTIONS.map((theme, index) => {
+          {THEME_OPTIONS.map((theme) => {
             const themeColors = THEMES[theme.key];
             const isSelected = currentTheme === theme.key;
 
@@ -150,16 +181,16 @@ export default function ThemesScreen() {
                 style={[
                   styles.themeCard,
                   { backgroundColor: themeColors.surface },
-                  isSelected && { 
-                    borderColor: themeColors.accent, 
-                    borderWidth: 2.5,
+                  isSelected && {
+                    borderColor: themeColors.accent,
+                    borderWidth: 2,
                     shadowColor: themeColors.accent,
-                    shadowOpacity: 0.3,
+                    shadowOpacity: 0.35,
                   },
                 ]}
                 onPress={() => handleThemeSelect(theme.key)}
                 activeOpacity={0.8}>
-                {/* Theme Preview */}
+                {/* Gradient preview strip */}
                 <LinearGradient
                   colors={themeColors.headerGradient}
                   start={{ x: 0, y: 0 }}
@@ -175,13 +206,11 @@ export default function ThemesScreen() {
                   <View style={[styles.colorDot, { backgroundColor: themeColors.text }]} />
                 </View>
 
-                {/* Theme name */}
                 <Text style={[styles.themeName, { color: themeColors.text }]}>{theme.name}</Text>
 
-                {/* Selected indicator */}
                 {isSelected && (
                   <View style={[styles.selectedBadge, { backgroundColor: themeColors.accent }]}>
-                    <Ionicons name="checkmark" size={14} color="#fff" />
+                    <Ionicons name="checkmark" size={11} color="#fff" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -189,6 +218,107 @@ export default function ThemesScreen() {
           })}
         </View>
       </View>
+
+      {/* Font Selection Section */}
+      <View style={[styles.section, { marginTop: 36 }]}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="text-outline" size={20} color={colors.accent} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Diary Font</Text>
+        </View>
+        <Text style={[styles.fontSectionSubtitle, { color: colors.text }]}>
+          Applied to your diary writing area only
+        </Text>
+
+        {/* Dropdown trigger */}
+        <TouchableOpacity
+          onPress={() => setFontDropdownOpen(true)}
+          activeOpacity={0.8}
+          style={[
+            styles.dropdownTrigger,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.accent + '40',
+            },
+          ]}>
+          <View style={styles.dropdownTriggerLeft}>
+            <Text style={[styles.dropdownFontName, { color: colors.text, fontFamily: selectedFontOption.key }]}>
+              {selectedFontOption.label}
+            </Text>
+            <Text style={[styles.dropdownSample, { color: colors.text, fontFamily: selectedFontOption.key }]}>
+              {selectedFontOption.sample}
+            </Text>
+          </View>
+          <View style={[styles.dropdownChevronWrap, { backgroundColor: colors.accent + '18' }]}>
+            <Ionicons name="chevron-down" size={16} color={colors.accent} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Font dropdown modal */}
+      <Modal
+        visible={fontDropdownOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFontDropdownOpen(false)}>
+        <Pressable style={styles.dropdownOverlay} onPress={() => setFontDropdownOpen(false)} />
+        <View style={[styles.dropdownSheet, { backgroundColor: colors.surface }]}>
+          {/* Sheet handle */}
+          <View style={[styles.dropdownHandle, { backgroundColor: colors.text + '25' }]} />
+
+          {/* Sheet header */}
+          <View style={[styles.dropdownSheetHeader, { borderBottomColor: colors.text + '12' }]}>
+            <Text style={[styles.dropdownSheetTitle, { color: colors.text }]}>Choose a Font</Text>
+            <TouchableOpacity
+              onPress={() => setFontDropdownOpen(false)}
+              style={[styles.dropdownCloseBtn, { backgroundColor: colors.text + '12' }]}>
+              <Ionicons name="close" size={16} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Font options */}
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.dropdownScroll}>
+            {FONT_OPTIONS.map((font) => {
+              const isSelected = currentFont === font.key;
+              return (
+                <TouchableOpacity
+                  key={font.key}
+                  onPress={() => {
+                    dispatch(setDiaryFont(font.key));
+                    setFontDropdownOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.dropdownItem,
+                    { borderBottomColor: colors.text + '08' },
+                    isSelected && { backgroundColor: colors.accent + '12' },
+                  ]}>
+                  <View style={styles.dropdownItemLeft}>
+                    <Text style={[styles.dropdownItemName, { color: colors.text, fontFamily: font.key }]}>
+                      {font.label}
+                    </Text>
+                    <Text style={[styles.dropdownItemDesc, { color: colors.text }]}>
+                      {font.description}
+                    </Text>
+                    <Text
+                      style={[styles.dropdownItemSample, { color: colors.text, fontFamily: font.key }]}
+                      numberOfLines={1}>
+                      {font.sample}
+                    </Text>
+                  </View>
+                  {isSelected ? (
+                    <View style={[styles.dropdownItemCheck, { backgroundColor: colors.accent }]}>
+                      <Ionicons name="checkmark" size={14} color="#fff" />
+                    </View>
+                  ) : (
+                    <View style={[styles.dropdownItemCircle, { borderColor: colors.text + '25' }]} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Background Image Section */}
       <View style={styles.section}>
@@ -352,68 +482,201 @@ const styles = StyleSheet.create({
   themesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 14,
+    gap: 10,
   },
   themeCard: {
-    width: '48%',
-    borderRadius: 18,
-    padding: 16,
+    width: '30.5%',
+    aspectRatio: 1,
+    borderRadius: 14,
+    padding: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 3,
   },
   themePreview: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  themeEmoji: {
-    fontSize: 28,
-  },
-  colorDots: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 10,
-  },
-  colorDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  themeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'PoppinsBold',
-  },
-  selectedBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 24,
-    height: 24,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 3,
+  },
+  themeEmoji: {
+    fontSize: 22,
+  },
+  colorDots: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 6,
+  },
+  colorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  themeName: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'PoppinsBold',
+    textAlign: 'center',
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  // Font section
+  fontSectionSubtitle: {
+    fontSize: 12,
+    fontFamily: 'RobotoRegular',
+    opacity: 0.55,
+    marginTop: -10,
+    marginBottom: 14,
+  },
+  // Dropdown trigger
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  dropdownTriggerLeft: {
+    flex: 1,
+  },
+  dropdownFontName: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 3,
+  },
+  dropdownSample: {
+    fontSize: 12,
+    opacity: 0.6,
+  },
+  dropdownChevronWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  // Dropdown modal sheet
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  dropdownSheet: {
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  dropdownHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  dropdownSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    marginBottom: 4,
+  },
+  dropdownSheetTitle: {
+    fontFamily: 'PoppinsBold',
+    fontSize: 17,
+  },
+  dropdownCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropdownScroll: {
+    marginTop: 4,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderRadius: 10,
+    marginBottom: 2,
+  },
+  dropdownItemLeft: {
+    flex: 1,
+  },
+  dropdownItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  dropdownItemDesc: {
+    fontSize: 11,
+    fontFamily: 'RobotoRegular',
+    opacity: 0.5,
+    marginBottom: 3,
+  },
+  dropdownItemSample: {
+    fontSize: 13,
+    opacity: 0.65,
+  },
+  dropdownItemCheck: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  dropdownItemCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginLeft: 10,
   },
   bgCard: {
     borderRadius: 16,

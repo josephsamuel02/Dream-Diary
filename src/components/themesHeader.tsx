@@ -61,7 +61,7 @@ const ThemesHeader = () => {
 
         {/* Title */}
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>Themes</Text>
+          <Text style={styles.title}>Appearance</Text>
           <Text style={styles.subtitle}>Customize your diary</Text>
         </View>
 

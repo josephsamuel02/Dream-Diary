@@ -35,6 +35,8 @@ import {
   removeBlockFromEntry,
   selectEntryById,
 } from '~/store/slices/diarySlice';
+import { selectThemeColors } from '~/store/slices/themeSlice';
+import type { DiaryFontKey } from '~/store/slices/settingsSlice';
 
 type Block = { id: string; type: 'text' | 'image' | 'audio'; content: string };
 
@@ -44,8 +46,9 @@ const MEDIA_DIR = `${FileSystem.documentDirectory}diary_media/`;
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-export default function DiaryInputBody({ entryId }: { entryId: string }) {
+export default function DiaryInputBody({ entryId, diaryFont }: { entryId: string; diaryFont?: DiaryFontKey }) {
   const dispatch = useAppDispatch();
+  const themeColors = useAppSelector(selectThemeColors);
   // pull the entry from store
   const entry = useAppSelector((s) => selectEntryById(s, entryId));
   const blocks = useMemo(() => entry?.blocks ?? [], [entry?.blocks]);
@@ -265,12 +268,21 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
       return (
         <TextInput
           ref={(r: any) => (inputRefs.current[item.id] = r)}
-          className="bg-transparent text-gray-900 my-2 rounded-md p-1 text-lg"
           multiline
           value={item.content}
           onChangeText={(t) => updateTextAtIndex(index, t)}
           placeholder="Write here..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={themeColors.text + '35'}
+          style={{
+            backgroundColor: 'transparent',
+            color: themeColors.text,
+            fontSize: 16,
+            lineHeight: 26,
+            marginVertical: 6,
+            paddingHorizontal: 4,
+            paddingVertical: 2,
+            fontFamily: diaryFont ?? 'RobotoRegular',
+          }}
           onFocus={() =>
             setTimeout(() => {
               try {
@@ -319,7 +331,7 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <Animated.View
         style={[
           styles.inner,
@@ -365,7 +377,6 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   inner: {
     flex: 1,

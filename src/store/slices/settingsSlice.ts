@@ -1,6 +1,16 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '../store';
 
+export type DiaryFontKey =
+  | 'RobotoRegular'
+  | 'Lora'
+  | 'Merriweather'
+  | 'Caveat'
+  | 'NunitoRegular'
+  | 'PlayfairDisplay'
+  | 'DancingScript'
+  | 'Pacifico';
+
 export interface SettingsState {
   notificationsEnabled: boolean;
   morningReminderTime: string; // HH:mm format
@@ -13,6 +23,8 @@ export interface SettingsState {
   // Cloud sync
   cloudSyncEnabled: boolean;
   lastSyncedAt: string | null; // ISO timestamp of last successful sync
+  // Diary font
+  diaryFont: DiaryFontKey;
 }
 
 const initialState: SettingsState = {
@@ -26,6 +38,7 @@ const initialState: SettingsState = {
   profilePhoto: null,
   cloudSyncEnabled: false,
   lastSyncedAt: null,
+  diaryFont: 'RobotoRegular',
 };
 
 const settingsSlice = createSlice({
@@ -60,6 +73,9 @@ const settingsSlice = createSlice({
     setLastSyncedAt: (state, action: PayloadAction<string | null>) => {
       state.lastSyncedAt = action.payload;
     },
+    setDiaryFont: (state, action: PayloadAction<DiaryFontKey>) => {
+      state.diaryFont = action.payload;
+    },
   },
 });
 
@@ -73,6 +89,7 @@ export const {
   updateProfilePhoto,
   setCloudSync,
   setLastSyncedAt,
+  setDiaryFont,
 } = settingsSlice.actions;
 
 export const selectSettings = (state: RootState) => state.settings;

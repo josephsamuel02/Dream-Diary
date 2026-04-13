@@ -38,7 +38,7 @@ const CustomHeader = () => {
   const menuItems = [
     {
       icon: 'color-palette-outline' as const,
-      label: 'Themes',
+      label: 'Appearance',
       sublabel: 'Customize colors & background',
       onPress: () => {
         setMenuOpen(false);

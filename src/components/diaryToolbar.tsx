@@ -189,6 +189,7 @@ export default function DiaryToolbar({
 
 /* Reusable AudioPlayer component used for audio blocks */
 export const AudioPlayer = ({ uri }: { uri: string }) => {
+  const themeColors = useAppSelector(selectThemeColors);
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
 
@@ -208,7 +209,6 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
       if (playing) {
         player.pause();
       } else {
-        // Ensure audio mode is set for playback before playing
         await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
         if (duration && currentTime >= duration - 0.3) player.seekTo(0);
         player.play();
@@ -220,7 +220,6 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
 
   const onReplay = useCallback(async () => {
     try {
-      // Ensure audio mode is set for playback before replaying
       await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       player.seekTo(0);
       player.play();
@@ -233,24 +232,30 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
     duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   return (
-    <View style={localStyles.audioCard}>
+    <View style={[localStyles.audioCard, { backgroundColor: themeColors.surface }]}>
       <View style={localStyles.audioRow}>
-        <TouchableOpacity onPress={onTogglePlay} style={localStyles.playBtn}>
-          <Text style={localStyles.playText}>{playing ? '❚❚' : '▶'}</Text>
+        <TouchableOpacity
+          onPress={onTogglePlay}
+          style={[localStyles.playBtn, { backgroundColor: themeColors.accent + '20' }]}>
+          <Text style={[localStyles.playText, { color: themeColors.accent }]}>
+            {playing ? '❚❚' : '▶'}
+          </Text>
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
-          <View style={localStyles.progressTrack}>
-            <View style={[localStyles.progressFill, { width: `${progressPercent}%` }]} />
+          <View style={[localStyles.progressTrack, { backgroundColor: themeColors.text + '20' }]}>
+            <View style={[localStyles.progressFill, { width: `${progressPercent}%`, backgroundColor: themeColors.accent }]} />
           </View>
           <View style={localStyles.timeRow}>
-            <Text style={localStyles.timeText}>{formatTime(currentTime)}</Text>
-            <Text style={localStyles.timeText}>{formatTime(duration)}</Text>
+            <Text style={[localStyles.timeText, { color: themeColors.text + '80' }]}>{formatTime(currentTime)}</Text>
+            <Text style={[localStyles.timeText, { color: themeColors.text + '80' }]}>{formatTime(duration)}</Text>
           </View>
         </View>
 
-        <TouchableOpacity onPress={onReplay} style={localStyles.replayBtn}>
-          <Text style={localStyles.replayText}>⟲</Text>
+        <TouchableOpacity
+          onPress={onReplay}
+          style={[localStyles.replayBtn, { backgroundColor: themeColors.accent + '15' }]}>
+          <Text style={[localStyles.replayText, { color: themeColors.accent }]}>⟲</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -317,7 +322,6 @@ const localStyles = StyleSheet.create({
   audioCard: {
     marginVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#fff',
     padding: 12,
     elevation: 2,
   },
@@ -329,16 +333,15 @@ const localStyles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f7ede5',
   },
-  playText: { fontSize: 18, color: '#111' },
+  playText: { fontSize: 18 },
 
-  progressTrack: { height: 3, backgroundColor: 'silver', borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: 3, backgroundColor: '#000' },
+  progressTrack: { height: 3, borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: 3 },
 
   timeRow: { marginTop: 6, flexDirection: 'row', justifyContent: 'space-between' },
-  timeText: { fontSize: 12, color: '#4B5563' },
+  timeText: { fontSize: 12 },
 
-  replayBtn: { marginLeft: 8, padding: 6, borderRadius: 6, backgroundColor: '#fff' },
-  replayText: { fontSize: 16, color: '#111' },
+  replayBtn: { marginLeft: 8, padding: 6, borderRadius: 6 },
+  replayText: { fontSize: 16 },
 });

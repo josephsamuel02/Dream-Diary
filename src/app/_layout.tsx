@@ -12,6 +12,13 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts, Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Roboto_400Regular, Roboto_500Medium } from '@expo-google-fonts/roboto';
 import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
+import { Lora_400Regular } from '@expo-google-fonts/lora';
+import { Merriweather_400Regular } from '@expo-google-fonts/merriweather';
+import { Caveat_400Regular } from '@expo-google-fonts/caveat';
+import { Nunito_400Regular } from '@expo-google-fonts/nunito';
+import { PlayfairDisplay_400Regular } from '@expo-google-fonts/playfair-display';
+import { DancingScript_400Regular } from '@expo-google-fonts/dancing-script';
+import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
 import { scheduleDailyReminder } from '../util/notifications';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -39,6 +46,13 @@ export default function Layout() {
     RobotoRegular: Roboto_400Regular,
     RobotoMedium: Roboto_500Medium,
     GreatVibes: GreatVibes_400Regular,
+    Lora: Lora_400Regular,
+    Merriweather: Merriweather_400Regular,
+    Caveat: Caveat_400Regular,
+    NunitoRegular: Nunito_400Regular,
+    PlayfairDisplay: PlayfairDisplay_400Regular,
+    DancingScript: DancingScript_400Regular,
+    Pacifico: Pacifico_400Regular,
   });
 
   // Read the persisted theme from AsyncStorage before the store rehydrates

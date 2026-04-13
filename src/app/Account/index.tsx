@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '~/lib/supabase';
 import type { UserProfile } from '~/lib/database.types';
@@ -113,6 +114,9 @@ export default function Account() {
   // ── Sync state ──────────────────────────────────────────────
   const [syncing, setSyncing] = useState(false);
 
+  // ── Photo upload state ──────────────────────────────────────
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
   // ── Bootstrap: get session & listen for changes ─────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -127,16 +131,24 @@ export default function Account() {
   }, []);
 
   // ── Fetch profile whenever session changes ──────────────────
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user')
-      .select('*')
-      .eq('id', userId)
-      .single();
+  const fetchProfile = useCallback(async (userId: string, retries = 3) => {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      const { data, error } = await supabase
+        .from('user')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (!error && data) {
-      setProfile(data as UserProfile);
-      dispatch(updateAccountProfile({ username: data.username, email: data.email }));
+      if (!error && data) {
+        setProfile(data as UserProfile);
+        dispatch(updateAccountProfile({ username: data.username, email: data.email }));
+        return;
+      }
+
+      // Row may not exist yet (race with sign-up insert); wait and retry
+      if (attempt < retries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
     }
   }, [dispatch]);
 
@@ -165,15 +177,29 @@ export default function Account() {
       if (signUpError) throw signUpError;
       if (!data.user) throw new Error('Sign up failed. Please try again.');
 
-      // Insert into public.user
-      const { error: profileError } = await supabase.from('user').insert({
-        id: data.user.id,
-        email: authEmail.trim().toLowerCase(),
-        username: authUsername.trim(),
-        about: '',
-      });
+      // Insert into public.user and return the created row
+      const { data: profileData, error: profileError } = await supabase
+        .from('user')
+        .insert({
+          id: data.user.id,
+          email: authEmail.trim().toLowerCase(),
+          username: authUsername.trim(),
+          about: '',
+        })
+        .select()
+        .single();
 
       if (profileError) throw profileError;
+
+      // If Supabase issued a session immediately (no email confirmation required),
+      // set the profile directly so it shows without waiting for the auth listener.
+      if (data.session && profileData) {
+        setProfile(profileData as UserProfile);
+        dispatch(updateAccountProfile({
+          username: (profileData as UserProfile).username,
+          email: (profileData as UserProfile).email,
+        }));
+      }
 
       Alert.alert(
         'Account created!',
@@ -223,6 +249,47 @@ export default function Account() {
     ]);
   };
 
+  // ── Delete Account ──────────────────────────────────────────
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account?',
+      'This will permanently delete your account and all your diary data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Yes, Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Your account and all diary entries will be erased forever. There is no way to recover this data.',
+              [
+                { text: 'Go Back', style: 'cancel' },
+                {
+                  text: 'Delete Forever',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const userId = session?.user?.id;
+                      if (!userId) return;
+                      // Delete profile row first, then auth user
+                      await supabase.from('user').delete().eq('id', userId);
+                      await supabase.auth.admin?.deleteUser?.(userId);
+                      await supabase.auth.signOut();
+                      setProfile(null);
+                    } catch (err: any) {
+                      Alert.alert('Error', err.message ?? 'Could not delete account. Please contact support.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   // ── Save profile edits ──────────────────────────────────────
   const handleSaveProfile = async () => {
     if (!session?.user?.id) return;
@@ -246,16 +313,72 @@ export default function Account() {
     }
   };
 
-  // ── Photo picker ────────────────────────────────────────────
+  // ── Photo picker + Supabase Storage upload ──────────────────
   const handlePickImage = async () => {
+    if (!session?.user?.id) return;
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5,
+      quality: 0.7,
     } as any);
-    if (!result.canceled && result.assets?.length) {
-      dispatch(updateProfilePhoto(result.assets[0].uri));
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    setUploadingPhoto(true);
+    try {
+      // Build a unique storage path: avatars/<user_id>/avatar.<ext>
+      const ext = (asset.uri.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const filePath = `avatars/${session.user.id}/avatar.${ext}`;
+      const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+      // Read the local file as base64, then decode to bytes for upload
+      // (fetch() cannot read local file:// URIs in React Native)
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const binaryStr = atob(base64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+
+      // Upload to Supabase Storage bucket "profile-images"
+      const { error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(filePath, bytes, {
+          contentType,
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Save URL to user table
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('user')
+        .update({ profile_image: publicUrl })
+        .eq('id', session.user.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setProfile(updatedProfile as UserProfile);
+      dispatch(updateProfilePhoto(publicUrl));
+    } catch (err: any) {
+      Alert.alert('Upload failed', err.message ?? 'Could not upload profile image.');
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -466,14 +589,22 @@ export default function Account() {
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 }}>
 
       {/* Profile card */}
-      <View style={styles.profileCard}>
+      <View style={[styles.profileCard, { backgroundColor: themeColors.surface }]}>
 
         {/* Avatar row */}
         <View style={styles.avatarRow}>
-          <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8} style={styles.avatarWrap}>
+          <TouchableOpacity
+            onPress={handlePickImage}
+            activeOpacity={0.8}
+            style={styles.avatarWrap}
+            disabled={uploadingPhoto}>
             <View style={[styles.avatar, { borderColor: themeColors.accent + '30', backgroundColor: themeColors.surface }]}>
-              {settings.profilePhoto ? (
-                <Image source={{ uri: settings.profilePhoto }} style={styles.avatarImg} />
+              {uploadingPhoto ? (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: themeColors.accent + '15' }]}>
+                  <ActivityIndicator size="large" color={themeColors.accent} />
+                </View>
+              ) : profile?.profile_image ? (
+                <Image source={{ uri: profile.profile_image }} style={styles.avatarImg} />
               ) : (
                 <View style={[styles.avatarPlaceholder, { backgroundColor: themeColors.accent + '15' }]}>
                   <Ionicons name="person" size={44} color={themeColors.accent} />
@@ -481,15 +612,17 @@ export default function Account() {
               )}
             </View>
             <View style={[styles.cameraBtn, { backgroundColor: themeColors.accent }]}>
-              <Ionicons name="camera" size={14} color="#fff" />
+              <Ionicons name={uploadingPhoto ? 'hourglass-outline' : 'camera'} size={14} color="#fff" />
             </View>
           </TouchableOpacity>
 
-          {/* Verified badge */}
-          <View style={[styles.syncBadge, { backgroundColor: '#DCFCE7' }]}>
-            <Ionicons name="cloud-done" size={12} color="#16A34A" />
-            <Text style={styles.syncBadgeText}>Cloud synced</Text>
-          </View>
+          {/* Cloud synced badge — only shown when sync is active */}
+          {settings.cloudSyncEnabled && (
+            <View style={[styles.syncBadge, { backgroundColor: themeColors.accent + '20' }]}>
+              <Ionicons name="cloud-done" size={12} color={themeColors.accent} />
+              <Text style={[styles.syncBadgeText, { color: themeColors.accent }]}>Cloud synced</Text>
+            </View>
+          )}
         </View>
 
         {!isEditing ? (
@@ -509,33 +642,33 @@ export default function Account() {
           </>
         ) : (
           <View style={styles.editForm}>
-            <Text style={styles.inputLabel}>Username</Text>
-            <View style={styles.inputWrap}>
+            <Text style={[styles.inputLabel, { color: themeColors.text + '80' }]}>Username</Text>
+            <View style={[styles.inputWrap, { backgroundColor: themeColors.background, borderColor: themeColors.accent + '30' }]}>
               <TextInput
                 value={editUsername}
                 onChangeText={setEditUsername}
-                style={styles.input}
-                placeholderTextColor="#9CA3AF"
+                style={[styles.input, { color: themeColors.text }]}
+                placeholderTextColor={themeColors.text + '40'}
               />
             </View>
 
-            <Text style={[styles.inputLabel, { marginTop: 12 }]}>About me</Text>
-            <View style={[styles.inputWrap, { height: 80, alignItems: 'flex-start', paddingTop: 10 }]}>
+            <Text style={[styles.inputLabel, { marginTop: 12, color: themeColors.text + '80' }]}>About me</Text>
+            <View style={[styles.inputWrap, { height: 80, alignItems: 'flex-start', paddingTop: 10, backgroundColor: themeColors.background, borderColor: themeColors.accent + '30' }]}>
               <TextInput
                 value={editAbout}
                 onChangeText={setEditAbout}
                 multiline
                 placeholder="A little about yourself…"
-                placeholderTextColor="#9CA3AF"
-                style={[styles.input, { height: 60 }]}
+                placeholderTextColor={themeColors.text + '40'}
+                style={[styles.input, { height: 60, color: themeColors.text }]}
               />
             </View>
 
             <View style={styles.editActions}>
               <TouchableOpacity
                 onPress={() => setIsEditing(false)}
-                style={styles.cancelBtn}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                style={[styles.cancelBtn, { backgroundColor: themeColors.background }]}>
+                <Text style={[styles.cancelBtnText, { color: themeColors.text + '80' }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSaveProfile}
@@ -553,22 +686,22 @@ export default function Account() {
       </View>
 
       {/* Data management */}
-      <View style={styles.sectionCard}>
+      <View style={[styles.sectionCard, { backgroundColor: themeColors.surface }]}>
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIcon, { backgroundColor: '#EFF6FF' }]}>
-            <Ionicons name="cloud" size={20} color="#3B82F6" />
+          <View style={[styles.sectionIcon, { backgroundColor: themeColors.accent + '20' }]}>
+            <Ionicons name="cloud" size={20} color={themeColors.accent} />
           </View>
           <View>
-            <Text style={styles.sectionTitle}>Cloud Backup</Text>
-            <Text style={styles.sectionSubtitle}>Keep your diary safe in the cloud</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Cloud Backup</Text>
+            <Text style={[styles.sectionSubtitle, { color: themeColors.text + '60' }]}>Keep your diary safe in the cloud</Text>
           </View>
         </View>
 
         {/* Cloud sync toggle */}
         <View style={styles.sectionRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionRowLabel}>Enable Cloud Sync</Text>
-            <Text style={styles.sectionRowSub}>
+            <Text style={[styles.sectionRowLabel, { color: themeColors.text }]}>Enable Cloud Sync</Text>
+            <Text style={[styles.sectionRowSub, { color: themeColors.text + '60' }]}>
               {settings.cloudSyncEnabled
                 ? `Last synced: ${formatLastSynced(settings.lastSyncedAt)}`
                 : 'Diary stays on this device only'}
@@ -577,7 +710,8 @@ export default function Account() {
           <Switch
             value={settings.cloudSyncEnabled}
             onValueChange={handleToggleCloudSync}
-            trackColor={{ true: '#3B82F6', false: '#e5e7eb' }}
+            trackColor={{ true: themeColors.accent, false: themeColors.text + '20' }}
+            thumbColor={settings.cloudSyncEnabled ? '#fff' : themeColors.text + '60'}
             disabled={syncing}
           />
         </View>
@@ -585,17 +719,17 @@ export default function Account() {
         {/* Active sync status / controls */}
         {settings.cloudSyncEnabled && (
           <>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: themeColors.text + '10' }]} />
 
             {/* Info banner */}
-            <View style={[styles.syncInfoBanner, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-              <Ionicons name="information-circle" size={14} color="#3B82F6" />
-              <Text style={styles.syncInfoText}>
+            <View style={[styles.syncInfoBanner, { backgroundColor: themeColors.accent + '15', borderColor: themeColors.accent + '30' }]}>
+              <Ionicons name="information-circle" size={14} color={themeColors.accent} />
+              <Text style={[styles.syncInfoText, { color: themeColors.text + 'CC' }]}>
                 Entries are automatically synced when you open the app or come back online after being offline.
               </Text>
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: themeColors.text + '10' }]} />
 
             {/* Manual sync button */}
             <TouchableOpacity
@@ -603,15 +737,15 @@ export default function Account() {
               disabled={syncing}
               style={[styles.sectionRow, syncing && { opacity: 0.6 }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sectionRowLabel}>Sync Now</Text>
-                <Text style={styles.sectionRowSub}>
+                <Text style={[styles.sectionRowLabel, { color: themeColors.text }]}>Sync Now</Text>
+                <Text style={[styles.sectionRowSub, { color: themeColors.text + '60' }]}>
                   {entries?.length ?? 0} local {(entries?.length ?? 0) === 1 ? 'entry' : 'entries'}
                 </Text>
               </View>
               {syncing ? (
-                <ActivityIndicator size="small" color="#3B82F6" />
+                <ActivityIndicator size="small" color={themeColors.accent} />
               ) : (
-                <Ionicons name="cloud-upload-outline" size={20} color="#3B82F6" />
+                <Ionicons name="cloud-upload-outline" size={20} color={themeColors.accent} />
               )}
             </TouchableOpacity>
           </>
@@ -620,10 +754,10 @@ export default function Account() {
         {/* Offline-only notice when sync is off */}
         {!settings.cloudSyncEnabled && (
           <>
-            <View style={styles.divider} />
-            <View style={[styles.syncInfoBanner, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
-              <Ionicons name="phone-portrait-outline" size={14} color="#F59E0B" />
-              <Text style={[styles.syncInfoText, { color: '#92400E' }]}>
+            <View style={[styles.divider, { backgroundColor: themeColors.text + '10' }]} />
+            <View style={[styles.syncInfoBanner, { backgroundColor: themeColors.text + '08', borderColor: themeColors.text + '15' }]}>
+              <Ionicons name="phone-portrait-outline" size={14} color={themeColors.text + '80'} />
+              <Text style={[styles.syncInfoText, { color: themeColors.text + '80' }]}>
                 Cloud sync is off. Your diary is stored locally on this device only. Enable it above to back up to the cloud.
               </Text>
             </View>
@@ -631,32 +765,16 @@ export default function Account() {
         )}
       </View>
 
-      {/* Export */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIcon, { backgroundColor: '#F3F4F6' }]}>
-            <Ionicons name="document-text" size={20} color="#6B7280" />
-          </View>
-          <View>
-            <Text style={styles.sectionTitle}>Export</Text>
-            <Text style={styles.sectionSubtitle}>Download your diary</Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          onPress={() => Alert.alert('Coming Soon', 'Export as PDF or CSV is coming in a future update.')}
-          style={styles.sectionRow}>
-          <View>
-            <Text style={styles.sectionRowLabel}>Export Diary</Text>
-            <Text style={styles.sectionRowSub}>Download as PDF or CSV</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-        </TouchableOpacity>
-      </View>
-
       {/* Sign out */}
-      <TouchableOpacity onPress={handleSignOut} style={styles.signOutBtn}>
-        <Ionicons name="log-out-outline" size={18} color="#EF4444" />
-        <Text style={styles.signOutText}>Sign Out</Text>
+      <TouchableOpacity onPress={handleSignOut} style={[styles.signOutBtn, { backgroundColor: themeColors.error + '18', borderColor: themeColors.error + '40' }]}>
+        <Ionicons name="log-out-outline" size={18} color={themeColors.error} />
+        <Text style={[styles.signOutText, { color: themeColors.error }]}>Sign Out</Text>
+      </TouchableOpacity>
+
+      {/* Delete account — small, subtle, at the very bottom */}
+      <TouchableOpacity onPress={handleDeleteAccount} style={styles.deleteAccountBtn}>
+        <Ionicons name="trash-outline" size={13} color={themeColors.error + 'AA'} />
+        <Text style={[styles.deleteAccountText, { color: themeColors.error + 'AA' }]}>Delete Account</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -983,6 +1101,20 @@ const styles = StyleSheet.create({
     fontFamily: 'PoppinsBold',
     fontSize: 15,
     color: '#EF4444',
+  },
+  // ── Delete account ────────────────────────────────────────────
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    marginBottom: 8,
+    opacity: 0.75,
+  },
+  deleteAccountText: {
+    fontFamily: 'RobotoRegular',
+    fontSize: 12,
   },
   // ── Sync ──────────────────────────────────────────────────────
   syncInfoBanner: {

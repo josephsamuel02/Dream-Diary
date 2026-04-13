@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type ThemeKey = 'cozy' | 'clean' | 'dreamy' | 'nature' | 'warm' | 'dark';
+export type ThemeKey = 'cozy' | 'night' | 'dreamy' | 'nature' | 'warm' | 'dark';
 
 export interface ThemeColors {
   background: string;
@@ -13,52 +13,52 @@ export interface ThemeColors {
 
 export const THEMES: Record<ThemeKey, ThemeColors> = {
   cozy: {
-    background: '#F5EDE0',
-    text: '#3E2723',
-    accent: '#D97706',
-    surface: '#FFF7ED',
-    error: '#DC2626',
-    headerGradient: ['#B45309', '#D97706', '#F5EDE0'],
+    background: '#2C1810',
+    text: '#F5E6D3',
+    accent: '#E8923A',
+    surface: '#3D2215',
+    error: '#F87171',
+    headerGradient: ['#0F0805', '#2C1810', '#3D2215'],
   },
-  clean: {
-    background: '#FDFCFB',
-    text: '#2D2D2D',
-    accent: '#3B82F6',
-    surface: '#F9FAFB',
-    error: '#EF4444',
-    headerGradient: ['#1D4ED8', '#3B82F6', '#FDFCFB'],
+  night: {
+    background: '#0F1729',
+    text: '#E2E8F0',
+    accent: '#60A5FA',
+    surface: '#1E2D45',
+    error: '#F87171',
+    headerGradient: ['#050A14', '#0F1729', '#1E2D45'],
   },
   dreamy: {
-    background: '#E0E7FF',
-    text: '#1E1B4B',
+    background: '#1E1433',
+    text: '#EDE9FE',
     accent: '#A78BFA',
-    surface: '#EEF2FF',
-    error: '#B91C1C',
-    headerGradient: ['#5B21B6', '#7C3AED', '#E0E7FF'],
+    surface: '#2D1F4E',
+    error: '#F87171',
+    headerGradient: ['#0D0A1A', '#1E1433', '#2D1F4E'],
   },
   nature: {
-    background: '#ECFDF5',
-    text: '#064E3B',
-    accent: '#10B981',
-    surface: '#D1FAE5',
-    error: '#DC2626',
-    headerGradient: ['#047857', '#059669', '#ECFDF5'],
+    background: '#052E16',
+    text: '#D1FAE5',
+    accent: '#34D399',
+    surface: '#064E3B',
+    error: '#F87171',
+    headerGradient: ['#022010', '#052E16', '#064E3B'],
   },
   warm: {
-    background: '#FEF3C7',
-    text: '#78350F',
-    accent: '#F59E0B',
-    surface: '#FFFBEB',
-    error: '#B91C1C',
-    headerGradient: ['#B45309', '#D97706', '#FEF3C7'],
+    background: '#3B1A08',
+    text: '#FEF3C7',
+    accent: '#FBBF24',
+    surface: '#5C2B0D',
+    error: '#F87171',
+    headerGradient: ['#1C0D04', '#3B1A08', '#5C2B0D'],
   },
   dark: {
-    background: '#1F2937',
-    text: '#F9FAFB',
-    accent: '#3B82F6',
-    surface: '#374151',
-    error: '#EF4444',
-    headerGradient: ['#030712', '#111827', '#374151'],
+    background: '#000000',
+    text: '#F5F5F5',
+    accent: '#909090',
+    surface: '#1C1C1C',
+    error: '#FF4444',
+    headerGradient: ['#000000', '#0D0D0D', '#1C1C1C'],
   },
 };
 
