@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppSelector } from '~/store/hooks';
 import { selectThemeColors } from '~/store/slices/themeSlice';
@@ -196,10 +196,20 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
   const currentTime = status?.currentTime ?? 0;
   const duration = status?.duration ?? 0;
 
-  const onTogglePlay = useCallback(() => {
+  // Ensure audio mode is set for playback when component mounts
+  useEffect(() => {
+    setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch((e) =>
+      console.warn('Failed to set audio mode for playback:', e)
+    );
+  }, []);
+
+  const onTogglePlay = useCallback(async () => {
     try {
-      if (playing) player.pause();
-      else {
+      if (playing) {
+        player.pause();
+      } else {
+        // Ensure audio mode is set for playback before playing
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
         if (duration && currentTime >= duration - 0.3) player.seekTo(0);
         player.play();
       }
@@ -208,8 +218,10 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
     }
   }, [playing, player, currentTime, duration]);
 
-  const onReplay = useCallback(() => {
+  const onReplay = useCallback(async () => {
     try {
+      // Ensure audio mode is set for playback before replaying
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       player.seekTo(0);
       player.play();
     } catch (e) {

@@ -224,6 +224,8 @@ export default function DiaryInputBody({ entryId }: { entryId: string }) {
   const stopRecording = useCallback(async () => {
     try {
       await recorder.stop();
+      // Reset audio mode for playback after recording stops
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       const uri = recorder.uri;
       if (uri) {
         const dest = await copyFileToAppAsync(uri, 'm4a');

@@ -146,38 +146,40 @@ export default function HistoryItem({
       activeOpacity={0.9}
       style={[
         styles.card,
-        { backgroundColor: themeColors.surface },
-        isToday && { 
-          backgroundColor: themeColors.accent + '12', 
-          borderWidth: 1.5, 
-          borderColor: themeColors.accent + '40',
+        { backgroundColor: themeColors.background },
+        isToday && {
+          backgroundColor: themeColors.background,
+          borderWidth: 1.5,
+          borderColor: themeColors.accent + '60',
         },
       ]}>
       {/* Accent line on left */}
-      <View 
+      <View
         style={[
-          styles.accentLine, 
-          { backgroundColor: isToday ? themeColors.accent : themeColors.accent + '40' }
-        ]} 
+          styles.accentLine,
+          { backgroundColor: isToday ? themeColors.accent : themeColors.accent + '50' },
+        ]}
       />
-      
-      <View style={styles.cardInner}>
+
+      <View style={[styles.cardInner, { backgroundColor: themeColors.background }]}>
         {/* Left: Date badge */}
         <View
           style={[
             styles.dateBadge,
-            { backgroundColor: isToday ? themeColors.accent : themeColors.background },
+            { backgroundColor: isToday ? themeColors.accent : themeColors.surface },
             isToday && { shadowColor: themeColors.accent, shadowOpacity: 0.3 },
           ]}>
           <Text style={[styles.dayNumber, { color: isToday ? '#fff' : themeColors.text }]}>
             {day || '—'}
           </Text>
-          <Text style={[styles.monthText, { color: isToday ? 'rgba(255,255,255,0.85)' : themeColors.text + '70' }]}>
+          <Text
+            style={[
+              styles.monthText,
+              { color: isToday ? 'rgba(255,255,255,0.85)' : themeColors.text + '70' },
+            ]}>
             {month}
           </Text>
-          {isToday && (
-            <View style={styles.todayDot} />
-          )}
+          {isToday && <View style={styles.todayDot} />}
         </View>
 
         {/* Middle: Content */}
@@ -195,13 +197,18 @@ export default function HistoryItem({
 
           {/* Preview text */}
           {preview ? (
-            <Text style={[styles.previewText, { color: themeColors.text }]} numberOfLines={2} ellipsizeMode="tail">
+            <Text
+              style={[styles.previewText, { color: themeColors.text }]}
+              numberOfLines={2}
+              ellipsizeMode="tail">
               {preview}
             </Text>
           ) : (
             <View style={styles.emptyContainer}>
-              <Ionicons name="create-outline" size={14} color={themeColors.text + '40'} />
-              <Text style={[styles.emptyText, { color: themeColors.text + '50' }]}>Tap to add your thoughts...</Text>
+              <Ionicons name="create-outline" size={14} color={themeColors.accent + '80'} />
+              <Text style={[styles.emptyText, { color: themeColors.text + '60' }]}>
+                Tap to add your thoughts...
+              </Text>
             </View>
           )}
 
@@ -209,15 +216,15 @@ export default function HistoryItem({
           {(hasImage || hasAudio) && (
             <View style={styles.mediaRow}>
               {hasImage && (
-                <View style={[styles.mediaIcon, { backgroundColor: themeColors.accent + '15' }]}>
+                <View style={[styles.mediaIcon, { backgroundColor: themeColors.surface }]}>
                   <Ionicons name="image" size={11} color={themeColors.accent} />
                   <Text style={[styles.mediaLabel, { color: themeColors.accent }]}>Photo</Text>
                 </View>
               )}
               {hasAudio && (
-                <View style={[styles.mediaIcon, { backgroundColor: '#D1FAE520' }]}>
-                  <Ionicons name="mic" size={11} color="#10B981" />
-                  <Text style={[styles.mediaLabel, { color: '#10B981' }]}>Audio</Text>
+                <View style={[styles.mediaIcon, { backgroundColor: themeColors.surface }]}>
+                  <Ionicons name="mic" size={11} color={themeColors.accent} />
+                  <Text style={[styles.mediaLabel, { color: themeColors.accent }]}>Audio</Text>
                 </View>
               )}
             </View>
@@ -227,13 +234,17 @@ export default function HistoryItem({
         {/* Right: Thumbnail or arrow */}
         {firstImage ? (
           <View style={styles.thumbnailContainer}>
-            <Image source={{ uri: firstImage.content }} style={styles.thumbnail} resizeMode="cover" />
+            <Image
+              source={{ uri: firstImage.content }}
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
             <View style={styles.thumbnailOverlay}>
               <Ionicons name="expand-outline" size={12} color="#fff" />
             </View>
           </View>
         ) : (
-          <View style={[styles.arrowContainer, { backgroundColor: themeColors.accent + '10' }]}>
+          <View style={[styles.arrowContainer, { backgroundColor: themeColors.surface }]}>
             <Ionicons name="chevron-forward" size={16} color={themeColors.accent} />
           </View>
         )}
@@ -246,23 +257,32 @@ export default function HistoryItem({
           e.stopPropagation();
           openOptions();
         }}
-        style={[styles.optionsBtn, { backgroundColor: themeColors.background + '80' }]}
+        style={[styles.optionsBtn, { backgroundColor: themeColors.surface + '90' }]}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Ionicons name="ellipsis-horizontal" size={14} color={themeColors.text + '70'} />
+        <Ionicons name="ellipsis-horizontal" size={14} color={themeColors.text + '80'} />
       </TouchableOpacity>
 
       {/* Modal overlay with popover when menuOpen */}
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={closeMenu}>
         <Pressable style={styles.modalOverlay} onPress={closeMenu} />
 
-        <View style={[styles.popoverAbsolute, { left: popLeft, top: popTop, backgroundColor: themeColors.surface }]}>
+        <View
+          style={[
+            styles.popoverAbsolute,
+            { left: popLeft, top: popTop, backgroundColor: themeColors.surface },
+          ]}>
           {!confirmDelete ? (
             <>
               <TouchableOpacity
                 onPress={() => onOpen(entry.id)}
                 style={styles.popItem}
                 activeOpacity={0.7}>
-                <Feather name="edit-2" size={14} color={themeColors.text} style={{ marginRight: 8 }} />
+                <Feather
+                  name="edit-2"
+                  size={14}
+                  color={themeColors.text}
+                  style={{ marginRight: 8 }}
+                />
                 <Text style={[styles.popText, { color: themeColors.text }]}>Edit</Text>
               </TouchableOpacity>
 
@@ -273,7 +293,12 @@ export default function HistoryItem({
                 }}
                 style={styles.popItem}
                 activeOpacity={0.7}>
-                <Feather name="refresh-cw" size={14} color={themeColors.text} style={{ marginRight: 8 }} />
+                <Feather
+                  name="refresh-cw"
+                  size={14}
+                  color={themeColors.text}
+                  style={{ marginRight: 8 }}
+                />
                 <Text style={[styles.popText, { color: themeColors.text }]}>Clear</Text>
               </TouchableOpacity>
 
@@ -281,7 +306,12 @@ export default function HistoryItem({
                 onPress={() => setConfirmDelete(true)}
                 style={[styles.popItem, styles.destructive]}
                 activeOpacity={0.7}>
-                <Feather name="trash-2" size={14} color={themeColors.error} style={{ marginRight: 8 }} />
+                <Feather
+                  name="trash-2"
+                  size={14}
+                  color={themeColors.error}
+                  style={{ marginRight: 8 }}
+                />
                 <Text style={[styles.popText, { color: themeColors.error }]}>Delete</Text>
               </TouchableOpacity>
             </>
@@ -314,13 +344,12 @@ export default function HistoryItem({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     marginBottom: 10,
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     overflow: 'hidden',
@@ -486,7 +515,6 @@ const styles = StyleSheet.create({
   popoverAbsolute: {
     position: 'absolute',
     width: 140,
-    backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 6,
     zIndex: 9999,

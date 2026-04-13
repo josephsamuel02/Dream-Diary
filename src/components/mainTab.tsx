@@ -159,6 +159,8 @@ const MainTab: React.FC = () => {
     try {
       if (isRecording) {
         await recorder.stop();
+        // Reset audio mode for playback after recording stops
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
         const uri = recorder.uri;
         if (uri) {
           setBusy(true);

@@ -4,11 +4,10 @@
     "slug": "dream-diary",
     "version": "1.0.0",
     "scheme": "dreamdiary",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+
+    "jsEngine": "hermes",
+
+    "platforms": ["ios", "android", "web"],
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
@@ -49,9 +48,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dreamdiary.app"
@@ -62,7 +59,15 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.dreamdiary.app",
-      "edgeToEdgeEnabled": true
-    }
+      "edgeToEdgeEnabled": true,
+      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"]
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4405b6fb-0b0b-4b19-9e9a-f7bd3be408bc"
+      }
+    },
+    "owner": "mrsam_1"
   }
 }
