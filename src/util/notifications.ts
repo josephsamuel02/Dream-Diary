@@ -13,6 +13,8 @@ Notifications.setNotificationHandler({
 });
 
 const CHANNEL_ID = 'diary_reminders';
+const MORNING_ID = 'morning_reminder';
+const NIGHT_ID = 'night_reminder';
 
 /**
  * Schedules (or cancels) the two daily diary reminders.
@@ -60,6 +62,7 @@ export async function scheduleDailyReminder(
   // Schedule morning reminder — fires daily at device local time
   if (!isNaN(morningHr) && !isNaN(morningMin)) {
     await Notifications.scheduleNotificationAsync({
+      identifier: MORNING_ID,
       content: {
         title: 'Good Morning! ☀️',
         body: "Have a great day! Don't forget to write down your morning thoughts and nightly dreams.",
@@ -77,6 +80,7 @@ export async function scheduleDailyReminder(
   // Schedule night reminder — fires daily at device local time
   if (!isNaN(nightHr) && !isNaN(nightMin)) {
     await Notifications.scheduleNotificationAsync({
+      identifier: NIGHT_ID,
       content: {
         title: 'Time to reflect ✍️',
         body: 'How was your day? Take a moment to jot down your thoughts, reflections, and dreams in your diary.',

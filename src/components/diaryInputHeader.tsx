@@ -1,18 +1,20 @@
-import { View, Text, TouchableOpacity, Platform, StatusBar, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useState } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAppSelector } from "~/store/hooks";
-import { selectThemeColors } from "~/store/slices/themeSlice";
+import { View, Text, TouchableOpacity, Platform, StatusBar, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSelector } from '~/store/hooks';
+import { selectThemeColors } from '~/store/slices/themeSlice';
+import HeaderMenu from './HeaderMenu';
 
 const DiaryInputHeader = ({ navigation }: any) => {
-  const [currentDate, setCurrentDate] = useState("");
-  const [currentTime, setCurrentTime] = useState("");
+  const [currentDate, setCurrentDate] = useState('');
+  const [currentTime, setCurrentTime] = useState('');
   const insets = useSafeAreaInsets();
   const themeColors = useAppSelector(selectThemeColors);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const statusBarHeight = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0;
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const topPadding = Math.max(insets.top, statusBarHeight);
 
   useEffect(() => {
@@ -21,16 +23,16 @@ const DiaryInputHeader = ({ navigation }: any) => {
 
       // Format date → e.g., Sep 2, 2025
       const dateOptions: Intl.DateTimeFormatOptions = {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
       };
-      const formattedDate = now.toLocaleDateString("en-US", dateOptions);
+      const formattedDate = now.toLocaleDateString('en-US', dateOptions);
 
       // Format time → e.g., 7:55 PM
-      const formattedTime = now.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
+      const formattedTime = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
       });
 
       setCurrentDate(formattedDate);
@@ -53,30 +55,29 @@ const DiaryInputHeader = ({ navigation }: any) => {
         paddingTop: topPadding + 8,
         paddingBottom: 16,
         paddingHorizontal: 20,
-      }}
-    >
+      }}>
       {/* Decorative circles */}
       <View
         style={{
-          position: "absolute",
+          position: 'absolute',
           right: -32,
           top: -32,
           width: 128,
           height: 128,
           borderRadius: 64,
-          backgroundColor: "rgba(255,255,255,0.1)",
+          backgroundColor: 'rgba(255,255,255,0.1)',
           transform: [{ scale: 1.2 }],
         }}
       />
       <View
         style={{
-          position: "absolute",
+          position: 'absolute',
           right: 80,
           top: 48,
           width: 64,
           height: 64,
           borderRadius: 32,
-          backgroundColor: "rgba(255,255,255,0.05)",
+          backgroundColor: 'rgba(255,255,255,0.05)',
         }}
       />
 
@@ -85,8 +86,7 @@ const DiaryInputHeader = ({ navigation }: any) => {
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
-          activeOpacity={0.7}
-        >
+          activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
 
@@ -99,8 +99,15 @@ const DiaryInputHeader = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Spacer for alignment */}
-        <View style={{ width: 40 }} />
+        {/* 3 dots menu button */}
+        <TouchableOpacity
+          onPress={() => setMenuOpen(true)}
+          style={styles.menuButton}
+          activeOpacity={0.7}>
+          <Ionicons name="ellipsis-vertical" size={18} color="#fff" />
+        </TouchableOpacity>
+
+        <HeaderMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
       </View>
     </LinearGradient>
   );
@@ -108,33 +115,42 @@ const DiaryInputHeader = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
   headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -6,
   },
   dateTimeContainer: {
-    alignItems: "center",
+    alignItems: 'center',
   },
   dateText: {
-    fontFamily: "PoppinsBold",
+    fontFamily: 'PoppinsBold',
     fontSize: 18,
-    color: "#fff",
-    textShadowColor: "rgba(0,0,0,0.1)",
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   timeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.15)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -142,9 +158,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timeText: {
-    fontFamily: "RobotoMedium",
+    fontFamily: 'RobotoMedium',
     fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
+    color: 'rgba(255,255,255,0.9)',
   },
 });
 

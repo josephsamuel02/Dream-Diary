@@ -29,11 +29,7 @@ import {
   THEMES,
   ThemeKey,
 } from '~/store/slices/themeSlice';
-import {
-  selectSettings,
-  setDiaryFont,
-  DiaryFontKey,
-} from '~/store/slices/settingsSlice';
+import { selectSettings, setDiaryFont, DiaryFontKey } from '~/store/slices/settingsSlice';
 
 const THEME_OPTIONS: { key: ThemeKey; name: string; emoji: string }[] = [
   { key: 'cozy', name: 'Cozy', emoji: '🍂' },
@@ -52,14 +48,49 @@ type FontOption = {
 };
 
 const FONT_OPTIONS: FontOption[] = [
-  { key: 'RobotoRegular',   label: 'Default',         description: 'Clean & modern',     sample: 'The quick brown fox...' },
-  { key: 'Lora',            label: 'Lora',             description: 'Classic serif',       sample: 'The quick brown fox...' },
-  { key: 'Merriweather',    label: 'Merriweather',     description: 'Literary & warm',     sample: 'The quick brown fox...' },
-  { key: 'PlayfairDisplay', label: 'Playfair',         description: 'Elegant editorial',   sample: 'The quick brown fox...' },
-  { key: 'Caveat',          label: 'Caveat',           description: 'Casual handwriting',  sample: 'The quick brown fox...' },
-  { key: 'DancingScript',   label: 'Dancing Script',   description: 'Flowing script',      sample: 'The quick brown fox...' },
-  { key: 'Pacifico',        label: 'Pacifico',         description: 'Friendly & round',    sample: 'The quick brown fox...' },
-  { key: 'NunitoRegular',   label: 'Nunito',           description: 'Soft & readable',     sample: 'The quick brown fox...' },
+  {
+    key: 'RobotoRegular',
+    label: 'Default',
+    description: 'Clean & modern',
+    sample: 'The quick brown fox...',
+  },
+  { key: 'Lora', label: 'Lora', description: 'Classic serif', sample: 'The quick brown fox...' },
+  {
+    key: 'Merriweather',
+    label: 'Merriweather',
+    description: 'Literary & warm',
+    sample: 'The quick brown fox...',
+  },
+  {
+    key: 'PlayfairDisplay',
+    label: 'Playfair',
+    description: 'Elegant editorial',
+    sample: 'The quick brown fox...',
+  },
+  {
+    key: 'Caveat',
+    label: 'Caveat',
+    description: 'Casual handwriting',
+    sample: 'The quick brown fox...',
+  },
+  {
+    key: 'DancingScript',
+    label: 'Dancing Script',
+    description: 'Flowing script',
+    sample: 'The quick brown fox...',
+  },
+  {
+    key: 'Pacifico',
+    label: 'Pacifico',
+    description: 'Friendly & round',
+    sample: 'The quick brown fox...',
+  },
+  {
+    key: 'NunitoRegular',
+    label: 'Nunito',
+    description: 'Soft & readable',
+    sample: 'The quick brown fox...',
+  },
 ];
 
 const MEDIA_DIR = `${FileSystem.documentDirectory}theme_backgrounds/`;
@@ -93,7 +124,10 @@ export default function ThemesScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission needed', 'Please allow access to your photos to set a background image.');
+        Alert.alert(
+          'Permission needed',
+          'Please allow access to your photos to set a background image.'
+        );
         return;
       }
 
@@ -107,11 +141,11 @@ export default function ThemesScreen() {
       if (!result.canceled && result.assets?.length) {
         setLoading(true);
         await ensureMediaDir();
-        
+
         const uri = result.assets[0].uri;
         const filename = `bg_${Date.now()}.jpg`;
         const dest = `${MEDIA_DIR}${filename}`;
-        
+
         await FileSystem.copyAsync({ from: uri, to: dest });
         dispatch(setBackgroundImage(dest));
         setLoading(false);
@@ -124,27 +158,23 @@ export default function ThemesScreen() {
   };
 
   const handleRemoveBackground = () => {
-    Alert.alert(
-      'Remove Background',
-      'Are you sure you want to remove the background image?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            if (backgroundImage) {
-              try {
-                await FileSystem.deleteAsync(backgroundImage, { idempotent: true });
-              } catch (e) {
-                // ignore
-              }
+    Alert.alert('Remove Background', 'Are you sure you want to remove the background image?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          if (backgroundImage) {
+            try {
+              await FileSystem.deleteAsync(backgroundImage, { idempotent: true });
+            } catch (e) {
+              // ignore
             }
-            dispatch(clearBackgroundImage());
-          },
+          }
+          dispatch(clearBackgroundImage());
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleOpacityChange = (value: number) => {
@@ -241,10 +271,18 @@ export default function ThemesScreen() {
             },
           ]}>
           <View style={styles.dropdownTriggerLeft}>
-            <Text style={[styles.dropdownFontName, { color: colors.text, fontFamily: selectedFontOption.key }]}>
+            <Text
+              style={[
+                styles.dropdownFontName,
+                { color: colors.text, fontFamily: selectedFontOption.key },
+              ]}>
               {selectedFontOption.label}
             </Text>
-            <Text style={[styles.dropdownSample, { color: colors.text, fontFamily: selectedFontOption.key }]}>
+            <Text
+              style={[
+                styles.dropdownSample,
+                { color: colors.text, fontFamily: selectedFontOption.key },
+              ]}>
               {selectedFontOption.sample}
             </Text>
           </View>
@@ -293,14 +331,21 @@ export default function ThemesScreen() {
                     isSelected && { backgroundColor: colors.accent + '12' },
                   ]}>
                   <View style={styles.dropdownItemLeft}>
-                    <Text style={[styles.dropdownItemName, { color: colors.text, fontFamily: font.key }]}>
+                    <Text
+                      style={[
+                        styles.dropdownItemName,
+                        { color: colors.text, fontFamily: font.key },
+                      ]}>
                       {font.label}
                     </Text>
                     <Text style={[styles.dropdownItemDesc, { color: colors.text }]}>
                       {font.description}
                     </Text>
                     <Text
-                      style={[styles.dropdownItemSample, { color: colors.text, fontFamily: font.key }]}
+                      style={[
+                        styles.dropdownItemSample,
+                        { color: colors.text, fontFamily: font.key },
+                      ]}
                       numberOfLines={1}>
                       {font.sample}
                     </Text>
@@ -310,7 +355,9 @@ export default function ThemesScreen() {
                       <Ionicons name="checkmark" size={14} color="#fff" />
                     </View>
                   ) : (
-                    <View style={[styles.dropdownItemCircle, { borderColor: colors.text + '25' }]} />
+                    <View
+                      style={[styles.dropdownItemCircle, { borderColor: colors.text + '25' }]}
+                    />
                   )}
                 </TouchableOpacity>
               );
@@ -428,9 +475,7 @@ export default function ThemesScreen() {
                 <Text style={styles.previewDateText}>22</Text>
               </View>
               <View style={styles.previewEntryContent}>
-                <Text style={[styles.previewEntryTitle, { color: colors.text }]}>
-                  Sample Entry
-                </Text>
+                <Text style={[styles.previewEntryTitle, { color: colors.text }]}>Sample Entry</Text>
                 <Text style={[styles.previewEntryText, { color: colors.text, opacity: 0.6 }]}>
                   This is how your entries will look...
                 </Text>

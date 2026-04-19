@@ -21,7 +21,7 @@ export default function DiaryToolbar({
 }: Props) {
   const themeColors = useAppSelector(selectThemeColors);
   const [expanded, setExpanded] = useState(false);
-  
+
   const expandAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -144,7 +144,8 @@ export default function DiaryToolbar({
           }}
           activeOpacity={0.8}
           style={localStyles.secondaryButton}>
-          <View style={[localStyles.secondaryButtonInner, { backgroundColor: themeColors.surface }]}>
+          <View
+            style={[localStyles.secondaryButtonInner, { backgroundColor: themeColors.surface }]}>
             <Feather name="camera" size={18} color={themeColors.accent} />
           </View>
           <Text style={[localStyles.buttonLabel, { color: themeColors.text }]}>Photo</Text>
@@ -164,7 +165,8 @@ export default function DiaryToolbar({
           }}
           activeOpacity={0.8}
           style={localStyles.secondaryButton}>
-          <View style={[localStyles.secondaryButtonInner, { backgroundColor: themeColors.surface }]}>
+          <View
+            style={[localStyles.secondaryButtonInner, { backgroundColor: themeColors.surface }]}>
             <Ionicons name="images-outline" size={18} color={themeColors.accent} />
           </View>
           <Text style={[localStyles.buttonLabel, { color: themeColors.text }]}>Image</Text>
@@ -244,11 +246,20 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
 
         <View style={{ flex: 1 }}>
           <View style={[localStyles.progressTrack, { backgroundColor: themeColors.text + '20' }]}>
-            <View style={[localStyles.progressFill, { width: `${progressPercent}%`, backgroundColor: themeColors.accent }]} />
+            <View
+              style={[
+                localStyles.progressFill,
+                { width: `${progressPercent}%`, backgroundColor: themeColors.accent },
+              ]}
+            />
           </View>
           <View style={localStyles.timeRow}>
-            <Text style={[localStyles.timeText, { color: themeColors.text + '80' }]}>{formatTime(currentTime)}</Text>
-            <Text style={[localStyles.timeText, { color: themeColors.text + '80' }]}>{formatTime(duration)}</Text>
+            <Text style={[localStyles.timeText, { color: themeColors.text + '80' }]}>
+              {formatTime(currentTime)}
+            </Text>
+            <Text style={[localStyles.timeText, { color: themeColors.text + '80' }]}>
+              {formatTime(duration)}
+            </Text>
           </View>
         </View>
 

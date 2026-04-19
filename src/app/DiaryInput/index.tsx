@@ -1,6 +1,6 @@
 // app/DiaryInput.tsx
 import { useSearchParams } from 'expo-router/build/hooks';
-import  { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,

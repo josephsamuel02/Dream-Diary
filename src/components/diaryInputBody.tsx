@@ -46,7 +46,13 @@ const MEDIA_DIR = `${FileSystem.documentDirectory}diary_media/`;
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-export default function DiaryInputBody({ entryId, diaryFont }: { entryId: string; diaryFont?: DiaryFontKey }) {
+export default function DiaryInputBody({
+  entryId,
+  diaryFont,
+}: {
+  entryId: string;
+  diaryFont?: DiaryFontKey;
+}) {
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
   // pull the entry from store

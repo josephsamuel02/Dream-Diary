@@ -9,7 +9,7 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
 import { useFonts } from 'expo-font';
@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAppSelector } from '~/store/hooks';
 import { selectThemeColors } from '~/store/slices/themeSlice';
+import HeaderMenu from './HeaderMenu';
 
 const CustomHeader = () => {
   const router = useRouter();
@@ -35,43 +36,6 @@ const CustomHeader = () => {
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const topPadding = Math.max(insets.top, statusBarHeight);
 
-  const menuItems = [
-    {
-      icon: 'color-palette-outline' as const,
-      label: 'Appearance',
-      sublabel: 'Customize colors & background',
-      onPress: () => {
-        setMenuOpen(false);
-        router.push('/Themes');
-      },
-    },
-    {
-      icon: 'settings-outline' as const,
-      label: 'Settings',
-      sublabel: 'App preferences',
-      onPress: () => {
-        setMenuOpen(false);
-        router.push('/Settings');
-      },
-    },
-    {
-      icon: 'person-outline' as const,
-      label: 'Account',
-      sublabel: 'Profile & data',
-      onPress: () => {
-        setMenuOpen(false);
-        router.push('/Account');
-      },
-    }, {
-      icon: 'information-circle-outline' as const,
-      label: 'About us',
-      sublabel: 'App info & contact',
-      onPress: () => {
-        setMenuOpen(false);
-        router.push('/About');
-      },
-    },
-  ];
 
   return (
     <>
@@ -128,7 +92,7 @@ const CustomHeader = () => {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setMenuOpen(true)}
-              style={[styles.actionButton, { backgroundColor: 'rgba(0,0,0,0.15)' }]}
+              style={[styles.actionButton, { backgroundColor: 'rgba(0,0,0,0.15)', marginRight: -6 }]}
               activeOpacity={0.7}>
               <Ionicons name="ellipsis-vertical" size={18} color="#fff" />
             </TouchableOpacity>
@@ -136,58 +100,7 @@ const CustomHeader = () => {
         </View>
       </LinearGradient>
 
-      {/* Menu Modal */}
-      <Modal
-        visible={menuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuOpen(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setMenuOpen(false)} />
-
-        <View style={[styles.menuContainer, { top: topPadding + 60 }]}>
-          <View style={[styles.menuCard, { backgroundColor: themeColors.surface }]}>
-            {/* Menu Header */}
-            <View style={styles.menuHeader}>
-              <Text style={[styles.menuTitle, { color: themeColors.text }]}>Menu</Text>
-              <TouchableOpacity onPress={() => setMenuOpen(false)}>
-                <Ionicons name="close" size={22} color={themeColors.text} style={{ opacity: 0.5 }} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Menu Items */}
-            {menuItems.map((item, index) => (
-              <TouchableOpacity
-                key={item.label}
-                style={[
-                  styles.menuItem,
-                  index < menuItems.length - 1 && styles.menuItemBorder,
-                ]}
-                onPress={item.onPress}
-                activeOpacity={0.7}>
-                <View style={[styles.menuIconCircle, { backgroundColor: themeColors.accent + '15' }]}>
-                  <Ionicons name={item.icon} size={20} color={themeColors.accent} />
-                </View>
-                <View style={styles.menuItemContent}>
-                  <Text style={[styles.menuItemLabel, { color: themeColors.text }]}>
-                    {item.label}
-                  </Text>
-                  <Text style={[styles.menuItemSublabel, { color: themeColors.text, opacity: 0.5 }]}>
-                    {item.sublabel}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={themeColors.text} style={{ opacity: 0.3 }} />
-              </TouchableOpacity>
-            ))}
-
-            {/* App Version */}
-            <View style={styles.menuFooter}>
-              <Text style={[styles.versionText, { color: themeColors.text, opacity: 0.3 }]}>
-                Dream Diary v1.0.0
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <HeaderMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </>
   );
 };
