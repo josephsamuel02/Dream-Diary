@@ -1,5 +1,5 @@
 // app/components/DiaryInputBody.tsx
-import { useEffect, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useCallback, useRef, useMemo, useState } from 'react';
 
 import {
   View,
@@ -49,10 +49,14 @@ const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 export default function DiaryInputBody({
   entryId,
   diaryFont,
+  diaryFontSize = 16,
 }: {
   entryId: string;
   diaryFont?: DiaryFontKey;
+  diaryFontSize?: number;
 }) {
+  // Keep line-height proportional so larger sizes don't look cramped.
+  const bodyLineHeight = Math.round(diaryFontSize * 1.55);
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
   // pull the entry from store
@@ -64,6 +68,17 @@ export default function DiaryInputBody({
   const animatedBottom = useRef(new Animated.Value(0)).current;
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const listRef = useRef<FlatList<Block> | null>(null);
+
+  // Toolbar expanded state
+  const [toolbarExpanded, setToolbarExpanded] = useState(false);
+  const toggleToolbarExpand = useCallback(() => {
+    setToolbarExpanded((prev) => !prev);
+  }, []);
+  const closeToolbarIfNotRecording = useCallback(() => {
+    if (!recorderState.isRecording && toolbarExpanded) {
+      setToolbarExpanded(false);
+    }
+  }, [recorderState.isRecording, toolbarExpanded]);
 
   // ensure media dir (same as before)
   const ensureMediaDir = useCallback(async () => {
@@ -282,8 +297,8 @@ export default function DiaryInputBody({
           style={{
             backgroundColor: 'transparent',
             color: themeColors.text,
-            fontSize: 16,
-            lineHeight: 26,
+            fontSize: diaryFontSize,
+            lineHeight: bodyLineHeight,
             marginVertical: 6,
             paddingHorizontal: 4,
             paddingVertical: 2,
@@ -338,6 +353,11 @@ export default function DiaryInputBody({
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      {/* Backdrop overlay to close toolbar when tapping outside */}
+      {toolbarExpanded && (
+        <Pressable style={styles.backdrop} onPress={closeToolbarIfNotRecording} />
+      )}
+
       <Animated.View
         style={[
           styles.inner,
@@ -374,6 +394,8 @@ export default function DiaryInputBody({
           takePhoto={takePhoto}
           recorderIsRecording={recorderState.isRecording}
           toggleRecording={() => (recorderState.isRecording ? stopRecording() : startRecording())}
+          expanded={toolbarExpanded}
+          onToggleExpand={toggleToolbarExpand}
         />
       </Animated.View>
     </View>
@@ -383,6 +405,14 @@ export default function DiaryInputBody({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 99,
   },
   inner: {
     flex: 1,

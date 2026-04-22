@@ -1,5 +1,5 @@
 import { useCallback, useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Animated, Pressable } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,8 @@ type Props = {
   takePhoto: () => Promise<void>;
   recorderIsRecording: boolean;
   toggleRecording: () => void | Promise<void>;
+  expanded: boolean;
+  onToggleExpand: () => void;
 };
 
 export default function DiaryToolbar({
@@ -18,9 +20,10 @@ export default function DiaryToolbar({
   takePhoto,
   recorderIsRecording,
   toggleRecording,
+  expanded,
+  onToggleExpand,
 }: Props) {
   const themeColors = useAppSelector(selectThemeColors);
-  const [expanded, setExpanded] = useState(false);
 
   const expandAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -48,8 +51,9 @@ export default function DiaryToolbar({
     }
   }, [recorderIsRecording, pulseAnim]);
 
-  const toggleExpand = () => {
-    const toValue = expanded ? 0 : 1;
+  // Sync animations with expanded prop
+  useEffect(() => {
+    const toValue = expanded ? 1 : 0;
     Animated.parallel([
       Animated.spring(expandAnim, {
         toValue,
@@ -63,8 +67,7 @@ export default function DiaryToolbar({
         useNativeDriver: true,
       }),
     ]).start();
-    setExpanded(!expanded);
-  };
+  }, [expanded, expandAnim, rotateAnim]);
 
   const menu1TranslateY = expandAnim.interpolate({
     inputRange: [0, 1],
@@ -139,7 +142,7 @@ export default function DiaryToolbar({
         ]}>
         <TouchableOpacity
           onPress={() => {
-            toggleExpand();
+            onToggleExpand();
             takePhoto();
           }}
           activeOpacity={0.8}
@@ -160,7 +163,7 @@ export default function DiaryToolbar({
         ]}>
         <TouchableOpacity
           onPress={() => {
-            toggleExpand();
+            onToggleExpand();
             pickImageFromLibrary();
           }}
           activeOpacity={0.8}
@@ -174,7 +177,7 @@ export default function DiaryToolbar({
       </Animated.View>
 
       {/* Main FAB */}
-      <TouchableOpacity onPress={toggleExpand} activeOpacity={0.9} style={localStyles.fabContainer}>
+      <TouchableOpacity onPress={onToggleExpand} activeOpacity={0.9} style={localStyles.fabContainer}>
         <LinearGradient
           colors={[themeColors.headerGradient[1], themeColors.headerGradient[0]]}
           start={{ x: 0, y: 0 }}

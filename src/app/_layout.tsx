@@ -33,6 +33,7 @@ import SettingsHeader from '~/components/settingsHeader';
 import AboutHeader from '~/components/aboutHeader';
 import LockScreen from '~/components/LockScreen';
 import SyncManager from '~/components/SyncManager';
+import DailyEntryManager from '~/components/DailyEntryManager';
 import { persistor, store } from '~/store/store';
 import type { ThemeKey } from '~/store/slices/themeSlice';
 
@@ -109,6 +110,10 @@ export default function Layout() {
         ) : (
           <SafeAreaProvider>
             <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+              {/* Creates a fresh diary entry every day at local midnight
+                  and on app foreground, so each day always has its own
+                  isolated bucket. */}
+              <DailyEntryManager />
               <SyncManager />
               <Stack>
                 <Stack.Screen

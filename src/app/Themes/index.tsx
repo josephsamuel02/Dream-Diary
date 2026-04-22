@@ -29,7 +29,15 @@ import {
   THEMES,
   ThemeKey,
 } from '~/store/slices/themeSlice';
-import { selectSettings, setDiaryFont, DiaryFontKey } from '~/store/slices/settingsSlice';
+import {
+  selectSettings,
+  setDiaryFont,
+  setDiaryFontSize,
+  DiaryFontKey,
+  DIARY_FONT_SIZE_MIN,
+  DIARY_FONT_SIZE_MAX,
+  DIARY_FONT_SIZE_DEFAULT,
+} from '~/store/slices/settingsSlice';
 
 const THEME_OPTIONS: { key: ThemeKey; name: string; emoji: string }[] = [
   { key: 'cozy', name: 'Cozy', emoji: '🍂' },
@@ -111,6 +119,7 @@ export default function ThemesScreen() {
   const backgroundOpacity = useAppSelector(selectBackgroundOpacity);
   const settings = useAppSelector(selectSettings);
   const currentFont = settings.diaryFont ?? 'RobotoRegular';
+  const currentFontSize = settings.diaryFontSize ?? DIARY_FONT_SIZE_DEFAULT;
   const [loading, setLoading] = useState(false);
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
 
@@ -290,6 +299,66 @@ export default function ThemesScreen() {
             <Ionicons name="chevron-down" size={16} color={colors.accent} />
           </View>
         </TouchableOpacity>
+      </View>
+
+      {/* Font Size Section */}
+      <View style={[styles.section, { marginTop: 28 }]}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="resize-outline" size={20} color={colors.accent} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Font Size</Text>
+        </View>
+        <Text style={[styles.fontSectionSubtitle, { color: colors.text }]}>
+          Adjust the text size used inside your diary entries
+        </Text>
+
+        <View
+          style={[
+            styles.fontSizeCard,
+            { backgroundColor: colors.surface, borderColor: colors.accent + '30' },
+          ]}>
+          <View style={styles.fontSizeHeader}>
+            <Text style={[styles.fontSizeLabel, { color: colors.text }]}>Size</Text>
+            <Text style={[styles.fontSizeValue, { color: colors.accent }]}>{currentFontSize}pt</Text>
+          </View>
+
+          <Slider
+            style={styles.slider}
+            minimumValue={DIARY_FONT_SIZE_MIN}
+            maximumValue={DIARY_FONT_SIZE_MAX}
+            step={1}
+            value={currentFontSize}
+            onValueChange={(v) => dispatch(setDiaryFontSize(Math.round(v)))}
+            minimumTrackTintColor={colors.accent}
+            maximumTrackTintColor={colors.text + '30'}
+            thumbTintColor={colors.accent}
+          />
+          <View style={styles.fontSizeHints}>
+            <Text style={[styles.fontSizeHint, { color: colors.text, opacity: 0.45 }]}>A</Text>
+            <Text
+              style={[styles.fontSizeHint, { color: colors.text, opacity: 0.45, fontSize: 18 }]}>
+              A
+            </Text>
+          </View>
+
+          {/* Live sample so users can see the effect immediately */}
+          <View
+            style={[styles.fontSizeSampleBox, { borderTopColor: colors.text + '12' }]}
+            pointerEvents="none">
+            <Text
+              style={[
+                styles.fontSizeSample,
+                {
+                  color: colors.text,
+                  fontFamily: currentFont,
+                  fontSize: currentFontSize,
+                  lineHeight: Math.round(currentFontSize * 1.55),
+                },
+              ]}
+              numberOfLines={2}>
+              The quick brown fox jumps over the lazy dog.
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* Font dropdown modal */}
@@ -722,6 +791,53 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     marginLeft: 10,
+  },
+  // Font size section
+  fontSizeCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  fontSizeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  fontSizeLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'RobotoMedium',
+  },
+  fontSizeValue: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  fontSizeHints: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginTop: -4,
+  },
+  fontSizeHint: {
+    fontSize: 12,
+    fontFamily: 'RobotoRegular',
+  },
+  fontSizeSampleBox: {
+    marginTop: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderTopWidth: 1,
+  },
+  fontSizeSample: {
+    textAlign: 'left',
   },
   bgCard: {
     borderRadius: 16,

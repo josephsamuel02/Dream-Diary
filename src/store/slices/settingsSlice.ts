@@ -25,7 +25,16 @@ export interface SettingsState {
   lastSyncedAt: string | null; // ISO timestamp of last successful sync
   // Diary font
   diaryFont: DiaryFontKey;
+  // Diary text size (in pt). Applies to title + body text inside the
+  // DiaryInput screen. Kept in settings so it persists across launches
+  // alongside the font choice.
+  diaryFontSize: number;
 }
+
+// Reasonable bounds for the font-size slider on the Appearance screen.
+export const DIARY_FONT_SIZE_MIN = 12;
+export const DIARY_FONT_SIZE_MAX = 28;
+export const DIARY_FONT_SIZE_DEFAULT = 16;
 
 const initialState: SettingsState = {
   notificationsEnabled: true,
@@ -39,6 +48,7 @@ const initialState: SettingsState = {
   cloudSyncEnabled: false,
   lastSyncedAt: null,
   diaryFont: 'RobotoRegular',
+  diaryFontSize: DIARY_FONT_SIZE_DEFAULT,
 };
 
 const settingsSlice = createSlice({
@@ -76,6 +86,15 @@ const settingsSlice = createSlice({
     setDiaryFont: (state, action: PayloadAction<DiaryFontKey>) => {
       state.diaryFont = action.payload;
     },
+    setDiaryFontSize: (state, action: PayloadAction<number>) => {
+      // Clamp to the supported range so values from older persisted
+      // state or stray callers can't break the layout.
+      const raw = Math.round(action.payload);
+      state.diaryFontSize = Math.max(
+        DIARY_FONT_SIZE_MIN,
+        Math.min(DIARY_FONT_SIZE_MAX, raw)
+      );
+    },
   },
 });
 
@@ -90,6 +109,7 @@ export const {
   setCloudSync,
   setLastSyncedAt,
   setDiaryFont,
+  setDiaryFontSize,
 } = settingsSlice.actions;
 
 export const selectSettings = (state: RootState) => state.settings;

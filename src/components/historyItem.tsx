@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { replaceBlocksForEntry, removeEntry } from '~/store/slices/diarySlice';
 import { selectThemeColors } from '~/store/slices/themeSlice';
+import { useToday } from '~/util/useToday';
 
 type Block = { id: string; type: 'text' | 'image' | 'audio'; content: string };
 type Entry = { id: string; date?: string; blocks: Block[]; title?: string };
@@ -137,8 +138,12 @@ export default function HistoryItem({
 
   const { left: popLeft, top: popTop } = computePopoverPos();
 
-  // Check if today
-  const isToday = entry.date === new Date().toISOString().split('T')[0];
+  // Compare against the LOCAL today (toISOString uses UTC and was
+  // mis-flagging the badge near midnight). useToday() also re-renders
+  // at local midnight so the badge moves to the correct entry the
+  // moment a new day begins.
+  const today = useToday();
+  const isToday = entry.date === today;
 
   return (
     <TouchableOpacity

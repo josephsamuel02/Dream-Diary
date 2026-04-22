@@ -28,18 +28,13 @@ import {
 
 // redux
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
-import { addEntry, selectEntries, addBlockToEntry } from '~/store/slices/diarySlice';
+import { selectEntries, addBlockToEntry } from '~/store/slices/diarySlice';
 import { selectThemeColors } from '~/store/slices/themeSlice';
+import { store } from '~/store/store';
+import { useToday } from '~/util/useToday';
+import { ensureTodayEntry } from '~/util/ensureTodayEntry';
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-const getLocalYYYYMMDD = (): string => {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
 
 const MEDIA_DIR = `${FileSystem.documentDirectory}diary_media/`;
 const ensureMediaDir = async () => {
@@ -88,7 +83,10 @@ const MainTab: React.FC = () => {
   const isRecording = recorderState?.isRecording ?? false;
   const [busy, setBusy] = useState(false);
 
-  const todayIso = getLocalYYYYMMDD();
+  // useToday() ticks at local midnight and on app foreground, so
+  // hasTodayEntry stays accurate even if the user keeps the app open
+  // overnight.
+  const todayIso = useToday();
   const hasTodayEntry = (entries ?? []).some((e) => e.date === todayIso);
 
   // Pulse animation for recording
@@ -131,20 +129,13 @@ const MainTab: React.FC = () => {
     setExpanded(!expanded);
   };
 
-  // ensure today's entry exists and return id (create deterministically if needed)
+  // ensure today's entry exists and return its id. We go through the
+  // shared `ensureTodayEntry` helper so that "today" is always
+  // resolved against fresh state via store.getState() — never a stale
+  // closure value from this component.
   const createOrGetTodayEntry = useCallback(() => {
-    const entry = (entries ?? []).find((e) => e.date === todayIso);
-    if (entry) return entry.id;
-    const id = genId();
-    dispatch(
-      addEntry({
-        id,
-        date: todayIso,
-        title: '',
-      })
-    );
-    return id;
-  }, [dispatch, entries, todayIso]);
+    return ensureTodayEntry(store.getState, dispatch);
+  }, [dispatch]);
 
   // Navigate to DiaryInput with the given entryId
   const openEntry = useCallback(
@@ -267,17 +258,16 @@ const MainTab: React.FC = () => {
     }
   }, [createOrGetTodayEntry, dispatch, openEntry]);
 
-  const createNewEntry = () => {
-    const id = genId();
-    dispatch(
-      addEntry({
-        id,
-        date: todayIso,
-        title: '',
-      })
-    );
+  // FAB tap when no entry yet exists for today: ensure today's entry
+  // exists (which may also be one that was just created at midnight by
+  // DailyEntryManager) and navigate to it. We never blindly mint a
+  // brand-new id here — that was the source of the "ghost id" bug
+  // where DiaryInput ended up holding an id that was never actually
+  // added to the store because of the date-uniqueness guard.
+  const createNewEntry = useCallback(() => {
+    const id = ensureTodayEntry(store.getState, dispatch);
     router.push(`/DiaryInput?entryId=${encodeURIComponent(id)}`);
-  };
+  }, [dispatch, router]);
 
   // Animation interpolations
   const cameraTranslateY = expandAnim.interpolate({
@@ -303,18 +293,33 @@ const MainTab: React.FC = () => {
     outputRange: ['0deg', '45deg'],
   });
 
+  const closeIfNotRecording = useCallback(() => {
+    if (!isRecording && expanded) {
+      toggleExpand();
+    }
+  }, [isRecording, expanded, toggleExpand]);
+
   return (
-    <View style={styles.container}>
-      {/* Expanded action buttons */}
-      <Animated.View
-        style={[
-          styles.actionButton,
-          {
-            transform: [{ translateY: micTranslateY }],
-            opacity: micOpacity,
-          },
-        ]}>
-        <TouchableOpacity onPress={onMicPress} activeOpacity={0.8} style={styles.secondaryButton}>
+    <>
+      {/* Backdrop overlay to close menu when tapping outside */}
+      {expanded && (
+        <Pressable
+          style={styles.backdrop}
+          onPress={closeIfNotRecording}
+        />
+      )}
+
+      <View style={styles.container}>
+        {/* Expanded action buttons */}
+        <Animated.View
+          style={[
+            styles.actionButton,
+            {
+              transform: [{ translateY: micTranslateY }],
+              opacity: micOpacity,
+            },
+          ]}>
+          <TouchableOpacity onPress={onMicPress} activeOpacity={0.8} style={styles.secondaryButton}>
           <Animated.View
             style={[
               styles.secondaryButtonInner,
@@ -435,17 +440,26 @@ const MainTab: React.FC = () => {
         </View>
       </Modal>
 
-      {/* busy indicator when copying/deleting etc */}
-      {busy && (
-        <View style={styles.busyOverlay}>
-          <ActivityIndicator size="large" color={themeColors.accent} />
-        </View>
-      )}
-    </View>
+        {/* busy indicator when copying/deleting etc */}
+        {busy && (
+          <View style={styles.busyOverlay}>
+            <ActivityIndicator size="large" color={themeColors.accent} />
+          </View>
+        )}
+      </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 99,
+  },
   container: {
     position: 'absolute',
     bottom: 30,

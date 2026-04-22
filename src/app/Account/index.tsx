@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '~/lib/supabase';
 import type { UserProfile } from '~/lib/database.types';
@@ -345,9 +345,9 @@ export default function Account() {
         bytes[i] = binaryStr.charCodeAt(i);
       }
 
-      // Upload to Supabase Storage bucket "profile-images"
+      // Upload to Supabase Storage bucket "Dream Diary"
       const { error: uploadError } = await supabase.storage
-        .from('profile-images')
+        .from('Dream Diary')
         .upload(filePath, bytes, {
           contentType,
           upsert: true,
@@ -357,7 +357,7 @@ export default function Account() {
 
       // Get the public URL
       const { data: urlData } = supabase.storage
-        .from('profile-images')
+        .from('Dream Diary')
         .getPublicUrl(filePath);
 
       const publicUrl = urlData.publicUrl;

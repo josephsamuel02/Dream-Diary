@@ -14,74 +14,68 @@ import DiaryInputBody from '~/components/diaryInputBody';
 
 // redux
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
-import { selectEntries, addEntry, updateEntryMeta } from '~/store/slices/diarySlice';
+import { selectEntries, updateEntryMeta } from '~/store/slices/diarySlice';
 import { selectThemeColors } from '~/store/slices/themeSlice';
 import { selectSettings } from '~/store/slices/settingsSlice';
-
-const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+import { store } from '~/store/store';
+import { ensureEntryForDate, ensureTodayEntry } from '~/util/ensureTodayEntry';
 
 export default function DiaryInput() {
   const { entryId: paramEntryId } = useSearchParams() as { entryId?: string };
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
   const themeColors = useAppSelector(selectThemeColors);
-  const { diaryFont } = useAppSelector(selectSettings);
+  const { diaryFont, diaryFontSize } = useAppSelector(selectSettings);
+  // Title scales with body but stays a couple of points larger so the
+  // visual hierarchy is preserved as the user changes the slider.
+  const titleFontSize = (diaryFontSize ?? 16) + 2;
 
   const [title, setTitle] = useState('');
   const [entryId, setEntryId] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Today's ISO date (yyyy-mm-dd)
-  const todayIso = new Date().toISOString().slice(0, 10);
-
-  // If an entryId param was passed, use it (and create it if it doesn't exist).
-  // Otherwise, find today's entry or create one.
+  // Resolve which entry this screen edits. We deliberately depend ONLY
+  // on `paramEntryId` so the resolution runs once per navigation —
+  // re-running on every `entries` change while the user types would
+  // clobber their input.
   useEffect(() => {
+    const state = store.getState();
+    const all = state.diary.entries ?? [];
+
     if (paramEntryId) {
-      // if entry already exists in store, just open it
-      const existing = entries.find((e) => e.id === paramEntryId);
+      // Happy path: the entry already exists in the store.
+      const existing = all.find((e) => e.id === paramEntryId);
       if (existing) {
-        setEntryId(paramEntryId);
+        setEntryId(existing.id);
         setTitle(existing.title ?? '');
-      } else {
-        // create a new entry with the provided id (defensive)
-        dispatch(
-          addEntry({
-            id: paramEntryId,
-            date: todayIso,
-            title: '',
-          })
-        );
-        setEntryId(paramEntryId);
-        setTitle('');
+        return;
       }
+
+      // The param points at an id that is NOT in the store. This can
+      // happen if the caller minted a fresh id but the date-uniqueness
+      // guard rejected the addEntry. Fall back to today's entry so we
+      // never end up editing a ghost id.
+      const todayId = ensureTodayEntry(store.getState, dispatch);
+      const resolved =
+        store.getState().diary.entries?.find((e) => e.id === todayId) ?? null;
+      setEntryId(todayId);
+      setTitle(resolved?.title ?? '');
       return;
     }
 
-    // no param: find an entry for today or create one
-    const existingToday = entries.find((e) => e.date === todayIso);
-    if (existingToday) {
-      setEntryId(existingToday.id);
-      setTitle(existingToday.title ?? '');
-      return;
-    }
-
-    // create new entry for today and open it
-    const newId = genId();
-    dispatch(
-      addEntry({
-        id: newId,
-        date: todayIso,
-        title: '',
-      })
-    );
-    setEntryId(newId);
-    setTitle('');
+    // No param: open today's entry, creating it if needed.
+    const todayId = ensureTodayEntry(store.getState, dispatch);
+    const resolved =
+      store.getState().diary.entries?.find((e) => e.id === todayId) ?? null;
+    setEntryId(todayId);
+    setTitle(resolved?.title ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramEntryId, entries]); // runs when entries update or param changes
+  }, [paramEntryId]);
 
-  // keep local title in sync with store updates when entry changes externally
+  // Keep local title in sync with external store updates (e.g. cloud
+  // pull). Skips when the value already matches so we don't fight the
+  // user's typing.
   useEffect(() => {
     if (!entryId) return;
     const entry = entries.find((e) => e.id === entryId);
@@ -131,6 +125,7 @@ export default function DiaryInput() {
                 backgroundColor: themeColors.background,
                 borderColor: isFocused ? themeColors.accent : themeColors.text + '15',
                 fontFamily: diaryFont,
+                fontSize: titleFontSize,
               },
             ]}
             value={title}
@@ -141,12 +136,20 @@ export default function DiaryInput() {
             onBlur={() => setIsFocused(false)}
           />
 
-          <DiaryInputBody entryId={entryId} diaryFont={diaryFont} />
+          <DiaryInputBody
+            entryId={entryId}
+            diaryFont={diaryFont}
+            diaryFontSize={diaryFontSize ?? 16}
+          />
         </View>
       </KeyboardAvoidingView>
     </View>
   );
 }
+
+// Suppress unused import linter warning — kept to make the helper
+// available if we later need to open a specific past date.
+void ensureEntryForDate;
 
 const styles = StyleSheet.create({
   container: {
