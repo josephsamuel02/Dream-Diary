@@ -190,6 +190,26 @@ export default function DiaryInputBody({
     [dispatch, entryId]
   );
 
+  // When a text block loses focus, drop it if it's empty AND it isn't
+  // the last block in the entry. The trailing block is always kept so
+  // the user has somewhere to type next; intermediate empties (left
+  // behind after the user clears a paragraph between media items) get
+  // pruned automatically.
+  const pruneIfEmptyOnBlur = useCallback(
+    (blockId: string) => {
+      const current = blocks;
+      const idx = current.findIndex((b) => b.id === blockId);
+      if (idx === -1) return;
+      const isLast = idx === current.length - 1;
+      if (isLast) return;
+      const blk = current[idx];
+      if (blk.type !== 'text') return;
+      if (blk.content.trim() !== '') return;
+      dispatch(removeBlockFromEntry({ entryId, blockId }));
+    },
+    [blocks, dispatch, entryId]
+  );
+
   const pickImageFromLibrary = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -313,6 +333,7 @@ export default function DiaryInputBody({
               }
             }, 80)
           }
+          onBlur={() => pruneIfEmptyOnBlur(item.id)}
         />
       );
     }

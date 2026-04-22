@@ -1,5 +1,5 @@
 // app/DiaryInput.tsx
-import { useSearchParams } from 'expo-router/build/hooks';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -21,7 +21,12 @@ import { store } from '~/store/store';
 import { ensureEntryForDate, ensureTodayEntry } from '~/util/ensureTodayEntry';
 
 export default function DiaryInput() {
-  const { entryId: paramEntryId } = useSearchParams() as { entryId?: string };
+  // useLocalSearchParams returns a plain params object scoped to this
+  // route. (useSearchParams returns a URLSearchParams instance, which
+  // can't be destructured — that was silently making `paramEntryId`
+  // always undefined and forcing the screen to open today's entry.)
+  const { entryId: paramEntryIdRaw } = useLocalSearchParams<{ entryId?: string | string[] }>();
+  const paramEntryId = Array.isArray(paramEntryIdRaw) ? paramEntryIdRaw[0] : paramEntryIdRaw;
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
   const themeColors = useAppSelector(selectThemeColors);

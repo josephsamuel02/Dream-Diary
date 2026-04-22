@@ -6,14 +6,11 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
-
-const ITEM_HEIGHT = 48;
+const ITEM_HEIGHT = 52;
 const VISIBLE_ITEMS = 5; // must be odd
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 
@@ -23,27 +20,29 @@ const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50
 interface TimePickerModalProps {
   visible: boolean;
   title: string;
+  icon?: string;
   /** Current time in "HH:mm" 24-hour format */
   value: string;
   accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  textColor: string;
   onConfirm: (time: string) => void;
   onCancel: () => void;
 }
 
-/** Parse a 24-hour "HH:mm" string into wheel indices */
 function parseTime(timeStr: string): { hourIdx: number; minIdx: number; ampm: 'AM' | 'PM' } {
   const [h, m] = timeStr.split(':').map(Number);
   const ampm: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
   let hour12 = h % 12;
   if (hour12 === 0) hour12 = 12;
-  const hourIdx = hour12 - 1; // HOURS array is 1-12, index 0-11
+  const hourIdx = hour12 - 1;
   const minIdx = Math.round(m / 5) % 12;
   return { hourIdx, minIdx, ampm };
 }
 
-/** Convert wheel selection back to 24-hour "HH:mm" string */
 function formatTime(hourIdx: number, minIdx: number, ampm: 'AM' | 'PM'): string {
-  let h = hourIdx + 1; // 1-12
+  let h = hourIdx + 1;
   if (ampm === 'AM' && h === 12) h = 0;
   if (ampm === 'PM' && h !== 12) h += 12;
   const m = minIdx * 5;
@@ -54,17 +53,17 @@ interface WheelProps {
   data: string[];
   selectedIndex: number;
   accentColor: string;
+  textColor: string;
+  surfaceColor: string;
   onChange: (index: number) => void;
 }
 
-function Wheel({ data, selectedIndex, accentColor, onChange }: WheelProps) {
+function Wheel({ data, selectedIndex, accentColor, textColor, surfaceColor, onChange }: WheelProps) {
   const listRef = useRef<FlatList>(null);
-  // Pad data so first and last items can center
   const pad = Math.floor(VISIBLE_ITEMS / 2);
   const padded = [...Array(pad).fill(''), ...data, ...Array(pad).fill('')];
 
   useEffect(() => {
-    // Scroll to selected item without animation on mount
     listRef.current?.scrollToIndex({
       index: selectedIndex + pad,
       animated: false,
@@ -77,7 +76,6 @@ function Wheel({ data, selectedIndex, accentColor, onChange }: WheelProps) {
       const rawIdx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
       const dataIdx = Math.max(0, Math.min(rawIdx, data.length - 1));
       onChange(dataIdx);
-      // Snap to exact position
       listRef.current?.scrollToIndex({
         index: dataIdx + pad,
         animated: true,
@@ -88,12 +86,26 @@ function Wheel({ data, selectedIndex, accentColor, onChange }: WheelProps) {
   );
 
   return (
-    <View style={styles.wheel}>
-      {/* Highlight band */}
+    <View style={[styles.wheel, { position: 'relative' }]}>
+      {/* Top fade */}
       <View
         pointerEvents="none"
-        style={[styles.wheelHighlight, { borderColor: accentColor + '50', backgroundColor: accentColor + '10' }]}
+        style={[styles.fadeMask, styles.fadeMaskTop, { backgroundColor: surfaceColor }]}
       />
+      {/* Bottom fade */}
+      <View
+        pointerEvents="none"
+        style={[styles.fadeMask, styles.fadeMaskBottom, { backgroundColor: surfaceColor }]}
+      />
+      {/* Selection highlight */}
+      <View
+        pointerEvents="none"
+        style={[
+          styles.selectionHighlight,
+          { borderColor: accentColor + '60', backgroundColor: accentColor + '18' },
+        ]}
+      />
+
       <FlatList
         ref={listRef}
         data={padded}
@@ -107,21 +119,21 @@ function Wheel({ data, selectedIndex, accentColor, onChange }: WheelProps) {
           const dataIdx = index - pad;
           const isSelected = dataIdx === selectedIndex;
           const dist = Math.abs(dataIdx - selectedIndex);
-          const opacity = item === '' ? 0 : dist === 0 ? 1 : dist === 1 ? 0.5 : 0.25;
+          const opacity = item === '' ? 0 : dist === 0 ? 1 : dist === 1 ? 0.45 : 0.2;
+          const scale = isSelected ? 1 : dist === 1 ? 0.92 : 0.84;
           return (
             <View style={styles.wheelItem}>
               <Text
                 style={[
                   styles.wheelText,
-                  isSelected && [styles.wheelTextSelected, { color: accentColor }],
-                  { opacity },
+                  { color: isSelected ? accentColor : textColor, opacity, transform: [{ scale }] },
+                  isSelected && styles.wheelTextSelected,
                 ]}>
                 {item}
               </Text>
             </View>
           );
         }}
-        contentContainerStyle={{ paddingVertical: 0 }}
       />
     </View>
   );
@@ -130,8 +142,12 @@ function Wheel({ data, selectedIndex, accentColor, onChange }: WheelProps) {
 export default function TimePickerModal({
   visible,
   title,
+  icon,
   value,
   accentColor,
+  backgroundColor,
+  surfaceColor,
+  textColor,
   onConfirm,
   onCancel,
 }: TimePickerModalProps) {
@@ -140,7 +156,6 @@ export default function TimePickerModal({
   const [minIdx, setMinIdx] = React.useState(parsed.minIdx);
   const [ampm, setAmpm] = React.useState<'AM' | 'PM'>(parsed.ampm);
 
-  // Re-sync when modal reopens with a new value
   useEffect(() => {
     if (visible) {
       const p = parseTime(value);
@@ -154,95 +169,127 @@ export default function TimePickerModal({
     onConfirm(formatTime(hourIdx, minIdx, ampm));
   };
 
-  const previewLabel = () => {
-    const h = hourIdx + 1;
-    const m = minIdx * 5;
-    return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
-  };
+  const previewH = hourIdx + 1;
+  const previewM = minIdx * 5;
+  const previewLabel = `${previewH}:${String(previewM).padStart(2, '0')} ${ampm}`;
+
+  const subTextColor = textColor + '70';
+  const handleColor = textColor + '30';
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onCancel} />
 
-      <View style={styles.sheet}>
-        {/* Handle */}
-        <View style={styles.handle} />
+      <View style={[styles.sheet, { backgroundColor: surfaceColor }]}>
+        {/* Drag handle */}
+        <View style={[styles.handle, { backgroundColor: handleColor }]} />
 
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onCancel} style={styles.headerBtn}>
-            <Text style={[styles.headerBtnText, { color: '#9CA3AF' }]}>Cancel</Text>
+        <View style={[styles.header, { borderBottomColor: textColor + '15' }]}>
+          <TouchableOpacity onPress={onCancel} style={styles.headerBtn} activeOpacity={0.7}>
+            <Text style={[styles.cancelText, { color: subTextColor }]}>Cancel</Text>
           </TouchableOpacity>
 
           <View style={{ alignItems: 'center' }}>
-            <Text style={styles.sheetTitle}>{title}</Text>
-            <Text style={[styles.previewTime, { color: accentColor }]}>{previewLabel()}</Text>
+            {icon && (
+              <View style={[styles.titleIcon, { backgroundColor: accentColor + '20' }]}>
+                <Ionicons name={icon as any} size={18} color={accentColor} />
+              </View>
+            )}
+            <Text style={[styles.sheetTitle, { color: textColor }]}>{title}</Text>
+            <Text style={[styles.previewTime, { color: accentColor }]}>{previewLabel}</Text>
           </View>
 
-          <TouchableOpacity onPress={handleConfirm} style={styles.headerBtn}>
-            <Text style={[styles.headerBtnText, { color: accentColor }]}>Set</Text>
+          <TouchableOpacity onPress={handleConfirm} style={styles.headerBtn} activeOpacity={0.7}>
+            <View style={[styles.setBtn, { backgroundColor: accentColor }]}>
+              <Text style={styles.setBtnText}>Set</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
-        {/* Wheels */}
+        {/* Column labels */}
+        <View style={styles.labelsRow}>
+          <Text style={[styles.colLabel, { color: subTextColor, flex: 1, textAlign: 'center' }]}>
+            HOUR
+          </Text>
+          <View style={{ width: 24 }} />
+          <Text style={[styles.colLabel, { color: subTextColor, flex: 1, textAlign: 'center' }]}>
+            MIN
+          </Text>
+          <View style={{ width: 76 }} />
+        </View>
+
+        {/* Wheels row */}
         <View style={styles.wheelsRow}>
-          {/* Hour wheel */}
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={styles.wheelLabel}>Hour</Text>
+          {/* Hour */}
+          <View style={{ flex: 1 }}>
             <Wheel
               data={HOURS}
               selectedIndex={hourIdx}
               accentColor={accentColor}
+              textColor={textColor}
+              surfaceColor={surfaceColor}
               onChange={setHourIdx}
             />
           </View>
 
-          {/* Colon separator */}
-          <View style={styles.colon}>
+          {/* Colon */}
+          <View style={styles.colonWrap}>
             <Text style={[styles.colonText, { color: accentColor }]}>:</Text>
           </View>
 
-          {/* Minute wheel */}
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={styles.wheelLabel}>Min</Text>
+          {/* Minute */}
+          <View style={{ flex: 1 }}>
             <Wheel
               data={MINUTES}
               selectedIndex={minIdx}
               accentColor={accentColor}
+              textColor={textColor}
+              surfaceColor={surfaceColor}
               onChange={setMinIdx}
             />
           </View>
 
-          {/* AM / PM */}
-          <View style={styles.ampmCol}>
-            <Text style={styles.wheelLabel}>  </Text>
-            <View style={[styles.ampmWrap, { borderColor: accentColor + '30' }]}>
-              {(['AM', 'PM'] as const).map((period) => (
-                <TouchableOpacity
-                  key={period}
-                  activeOpacity={0.7}
-                  onPress={() => setAmpm(period)}
-                  style={[
-                    styles.ampmBtn,
-                    ampm === period && { backgroundColor: accentColor },
-                  ]}>
-                  <Text
+          {/* AM / PM segmented */}
+          <View style={styles.ampmWrap}>
+            <View
+              style={[
+                styles.ampmTrack,
+                { backgroundColor: backgroundColor, borderColor: accentColor + '35' },
+              ]}>
+              {(['AM', 'PM'] as const).map((p) => {
+                const active = ampm === p;
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    activeOpacity={0.7}
+                    onPress={() => setAmpm(p)}
                     style={[
-                      styles.ampmText,
-                      ampm === period ? { color: '#fff', fontFamily: 'PoppinsBold' } : { color: '#6B7280' },
+                      styles.ampmSegment,
+                      active && { backgroundColor: accentColor, shadowColor: accentColor },
                     ]}>
-                    {period}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.ampmText,
+                        active
+                          ? { color: '#fff', fontFamily: 'PoppinsBold' }
+                          : { color: subTextColor, fontFamily: 'RobotoMedium' },
+                      ]}>
+                      {p}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>
 
-        {/* Info hint */}
-        <View style={styles.hint}>
-          <Ionicons name="information-circle-outline" size={13} color="#9CA3AF" />
-          <Text style={styles.hintText}>Scroll to select hour &amp; minute</Text>
+        {/* Hint */}
+        <View style={styles.hintRow}>
+          <Ionicons name="swap-vertical-outline" size={12} color={subTextColor} />
+          <Text style={[styles.hintText, { color: subTextColor }]}>
+            Scroll wheels to pick the time
+          </Text>
         </View>
       </View>
     </Modal>
@@ -252,87 +299,109 @@ export default function TimePickerModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   sheet: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 28,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: -6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 20,
       },
-      android: { elevation: 20 },
+      android: { elevation: 24 },
     }),
   },
   handle: {
     alignSelf: 'center',
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E5E7EB',
     marginTop: 12,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  headerBtn: { paddingHorizontal: 4, minWidth: 60 },
-  headerBtnText: { fontFamily: 'PoppinsBold', fontSize: 15 },
+  headerBtn: { minWidth: 64, alignItems: 'center' },
+  cancelText: { fontFamily: 'RobotoMedium', fontSize: 14 },
+  setBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  setBtnText: {
+    fontFamily: 'PoppinsBold',
+    fontSize: 14,
+    color: '#fff',
+  },
+  titleIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
   sheetTitle: {
     fontFamily: 'PoppinsBold',
-    fontSize: 16,
-    color: '#1F2937',
+    fontSize: 15,
   },
   previewTime: {
     fontFamily: 'RobotoMedium',
     fontSize: 13,
     marginTop: 2,
   },
-  // Wheels
-  wheelsRow: {
+  labelsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    marginTop: 8,
+    alignItems: 'center',
+    marginTop: 10,
     marginBottom: 4,
+    paddingHorizontal: 4,
   },
-  wheelLabel: {
+  colLabel: {
     fontFamily: 'RobotoMedium',
     fontSize: 10,
-    color: '#9CA3AF',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: 6,
-    textAlign: 'center',
+  },
+  wheelsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   wheel: {
     height: PICKER_HEIGHT,
-    width: 72,
     overflow: 'hidden',
   },
-  wheelHighlight: {
+  selectionHighlight: {
     position: 'absolute',
     top: ITEM_HEIGHT * Math.floor(VISIBLE_ITEMS / 2),
-    left: 4,
-    right: 4,
+    left: 6,
+    right: 6,
     height: ITEM_HEIGHT,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1.5,
     zIndex: 1,
-    pointerEvents: 'none',
   },
+  fadeMask: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: ITEM_HEIGHT * 1.4,
+    zIndex: 2,
+  },
+  fadeMaskTop: { top: 0, opacity: 0.72 },
+  fadeMaskBottom: { bottom: 0, opacity: 0.72 },
   wheelItem: {
     height: ITEM_HEIGHT,
     alignItems: 'center',
@@ -340,56 +409,57 @@ const styles = StyleSheet.create({
   },
   wheelText: {
     fontFamily: 'PoppinsRegular',
-    fontSize: 22,
-    color: '#374151',
+    fontSize: 24,
   },
   wheelTextSelected: {
     fontFamily: 'PoppinsBold',
-    fontSize: 26,
+    fontSize: 28,
   },
-  colon: {
+  colonWrap: {
     height: PICKER_HEIGHT,
+    width: 24,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 28,
-    paddingHorizontal: 4,
+    paddingBottom: 8,
   },
   colonText: {
     fontFamily: 'PoppinsBold',
-    fontSize: 28,
-  },
-  // AM/PM
-  ampmCol: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginLeft: 12,
+    fontSize: 30,
   },
   ampmWrap: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    marginTop: 0,
-  },
-  ampmBtn: {
-    width: 56,
-    height: 44,
+    width: 64,
+    height: PICKER_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 12,
+  },
+  ampmTrack: {
+    borderRadius: 18,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  ampmSegment: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   ampmText: {
-    fontFamily: 'PoppinsRegular',
     fontSize: 14,
   },
-  // Hint
-  hint: {
+  hintRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    gap: 4,
+    marginTop: 14,
+    gap: 5,
   },
   hintText: {
     fontFamily: 'RobotoRegular',
     fontSize: 11,
-    color: '#9CA3AF',
   },
 });
