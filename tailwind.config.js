@@ -7,6 +7,7 @@ module.exports = {
     colors: {
       //default
       white: '#ffffff',
+      black: '#000000',
 
       // Clean Palette
       clean_background: '#FDFCFB',
@@ -71,7 +72,7 @@ module.exports = {
         'poppins-bold': ['PoppinsBold', 'sans-serif'],
         roboto: ['RobotoRegular', 'sans-serif'],
         'roboto-medium': ['RobotoMedium', 'sans-serif'],
-        arizonia: ['Arizonia', 'cursive'],
+        arizonia: ['Arizonia_400Regular', 'cursive'],
       },
     },
   },

@@ -25,7 +25,8 @@ calender view
 notification
 daily motivational quotes
 themes
-firebase login / profile setup (optional)
+supabase backup
+supabase login  / profile setup (optional)
 
 
 
@@ -51,9 +52,9 @@ Write to SQLite first (offline).
 
 When internet is available:
 
-Push new/updated entries from SQLite → Firebase.
+Push new/updated entries from SQLite → supabase.
 
-Pull new/updated entries from Firebase → SQLite.
+Pull new/updated entries from supabase → SQLite.
 
 Use timestamps or updatedAt fields to resolve conflicts.
 
@@ -63,14 +64,14 @@ Custom Sync Logic:
 
 Keep a column like lastSyncedAt in SQLite.
 
-On sync, compare updatedAt in Firebase vs SQLite and update whichever is older.
+On sync, compare updatedAt in supabase vs SQLite and update whichever is older.
 
 Background Sync:
 
 Use expo-task-manager or an app focus listener to run sync in the background.
 
-Firebase Offline Mode (alternative):
+supabase Offline Mode (alternative):
 
-Firebase Firestore already supports offline caching.
+supabase Firestore already supports offline caching.
 
 This means you might not need SQLite at all — Firestore itself can act as local + cloud storage.
