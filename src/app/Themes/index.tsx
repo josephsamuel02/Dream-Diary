@@ -6,11 +6,11 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  Alert,
   Modal,
   Pressable,
   Platform,
 } from 'react-native';
+import { useAppDialog } from '~/hooks/useAppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -122,6 +122,7 @@ export default function ThemesScreen() {
   const currentFontSize = settings.diaryFontSize ?? DIARY_FONT_SIZE_DEFAULT;
   const [loading, setLoading] = useState(false);
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
+  const { showDialog, dialogElement } = useAppDialog();
 
   const selectedFontOption = FONT_OPTIONS.find((f) => f.key === currentFont) ?? FONT_OPTIONS[0];
 
@@ -133,10 +134,11 @@ export default function ThemesScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert(
-          'Permission needed',
-          'Please allow access to your photos to set a background image.'
-        );
+        showDialog({
+          title: 'Permission Needed',
+          message: 'Please allow access to your photos to set a background image.',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
 
@@ -162,28 +164,36 @@ export default function ThemesScreen() {
     } catch (e) {
       console.error('Pick image error:', e);
       setLoading(false);
-      Alert.alert('Error', 'Failed to set background image');
+      showDialog({
+        title: 'Error',
+        message: 'Failed to set background image. Please try again.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
   };
 
   const handleRemoveBackground = () => {
-    Alert.alert('Remove Background', 'Are you sure you want to remove the background image?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          if (backgroundImage) {
-            try {
-              await FileSystem.deleteAsync(backgroundImage, { idempotent: true });
-            } catch (e) {
-              // ignore
+    showDialog({
+      title: 'Remove Background',
+      message: 'Are you sure you want to remove the background image?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            if (backgroundImage) {
+              try {
+                await FileSystem.deleteAsync(backgroundImage, { idempotent: true });
+              } catch (e) {
+                // ignore
+              }
             }
-          }
-          dispatch(clearBackgroundImage());
+            dispatch(clearBackgroundImage());
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const handleOpacityChange = (value: number) => {
@@ -193,6 +203,7 @@ export default function ThemesScreen() {
   const colors = THEMES[currentTheme];
 
   return (
+    <>
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
@@ -556,6 +567,8 @@ export default function ThemesScreen() {
 
       <View style={{ height: 100 }} />
     </ScrollView>
+    {dialogElement}
+  </>
   );
 }
 

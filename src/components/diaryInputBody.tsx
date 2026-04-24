@@ -5,7 +5,6 @@ import {
   View,
   TextInput,
   Image,
-  Alert,
   Platform,
   Keyboard,
   Animated,
@@ -13,6 +12,7 @@ import {
   FlatList,
   Pressable,
 } from 'react-native';
+import { useAppDialog } from '~/hooks/useAppDialog';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
@@ -59,6 +59,7 @@ export default function DiaryInputBody({
   const bodyLineHeight = Math.round(diaryFontSize * 1.55);
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
+  const { showDialog, dialogElement } = useAppDialog();
   // pull the entry from store
   const entry = useAppSelector((s) => selectEntryById(s, entryId));
   const blocks = useMemo(() => entry?.blocks ?? [], [entry?.blocks]);
@@ -116,7 +117,11 @@ export default function DiaryInputBody({
         await ensureMediaDir();
         const perm = await requestRecordingPermissionsAsync();
         if (!perm.granted) {
-          Alert.alert('Microphone permission required', 'Enable mic access to record audio notes.');
+          showDialog({
+            title: 'Microphone Access Required',
+            message: 'Enable mic access in your device settings to record audio notes.',
+            buttons: [{ text: 'OK', style: 'default' }],
+          });
         }
         await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
         const imgPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -234,7 +239,11 @@ export default function DiaryInputBody({
     try {
       const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
       if (!cameraPerm.granted) {
-        Alert.alert('Camera permission required');
+        showDialog({
+          title: 'Camera Access Required',
+          message: 'Enable camera access in your device settings to take photos.',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -261,7 +270,11 @@ export default function DiaryInputBody({
       recorder.record();
     } catch (e) {
       console.error('Start recording error:', e);
-      Alert.alert('Recording failed', 'Could not start recording.');
+      showDialog({
+        title: 'Recording Failed',
+        message: 'Could not start recording. Please try again.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     }
   }, [recorder]);
 
@@ -341,14 +354,18 @@ export default function DiaryInputBody({
       return (
         <Pressable
           onLongPress={() =>
-            Alert.alert('Delete image', 'Remove this image from the entry?', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
-              },
-            ])
+            showDialog({
+              title: 'Delete Image',
+              message: 'Remove this image from the entry?',
+              buttons: [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
+                },
+              ],
+            })
           }>
           <Image source={{ uri: item.content }} className="my-2 h-72 w-full rounded-lg" />
         </Pressable>
@@ -357,14 +374,18 @@ export default function DiaryInputBody({
       return (
         <Pressable
           onLongPress={() =>
-            Alert.alert('Delete audio', 'Remove this audio clip from the entry?', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
-              },
-            ])
+            showDialog({
+              title: 'Delete Audio',
+              message: 'Remove this audio clip from the entry?',
+              buttons: [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
+                },
+              ],
+            })
           }>
           <AudioPlayer uri={item.content} />
         </Pressable>
@@ -419,6 +440,7 @@ export default function DiaryInputBody({
           onToggleExpand={toggleToolbarExpand}
         />
       </Animated.View>
+      {dialogElement}
     </View>
   );
 }

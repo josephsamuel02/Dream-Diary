@@ -69,31 +69,34 @@ export default function DiaryToolbar({
     ]).start();
   }, [expanded, expandAnim, rotateAnim]);
 
-  const menu1TranslateY = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -70],
-  });
+  // Scale-based animations keep touch targets at the actual visual position.
+  // The old translateY approach moved buttons outside the container's layout bounds
+  // so taps hit the backdrop instead of the buttons.
   const menu1Opacity = expandAnim.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 0, 1],
   });
-
-  const menu2TranslateY = expandAnim.interpolate({
+  const menu1Scale = expandAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -140],
+    outputRange: [0.4, 1],
   });
+
   const menu2Opacity = expandAnim.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 0, 1],
   });
-
-  const menu3TranslateY = expandAnim.interpolate({
+  const menu2Scale = expandAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -210],
+    outputRange: [0.4, 1],
   });
+
   const menu3Opacity = expandAnim.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 0, 1],
+  });
+  const menu3Scale = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 1],
   });
 
   const rotation = rotateAnim.interpolate({
@@ -103,11 +106,12 @@ export default function DiaryToolbar({
 
   return (
     <View style={localStyles.fabContainerWrapper}>
-      {/* Voice */}
+      {/* Voice — topmost, rendered first in column flow */}
       <Animated.View
+        pointerEvents={expanded ? 'auto' : 'none'}
         style={[
           localStyles.actionButton,
-          { transform: [{ translateY: menu3TranslateY }], opacity: menu3Opacity },
+          { transform: [{ scale: menu3Scale }], opacity: menu3Opacity },
         ]}>
         <TouchableOpacity
           onPress={() => {
@@ -136,9 +140,10 @@ export default function DiaryToolbar({
 
       {/* Photo */}
       <Animated.View
+        pointerEvents={expanded ? 'auto' : 'none'}
         style={[
           localStyles.actionButton,
-          { transform: [{ translateY: menu2TranslateY }], opacity: menu2Opacity },
+          { transform: [{ scale: menu2Scale }], opacity: menu2Opacity },
         ]}>
         <TouchableOpacity
           onPress={() => {
@@ -157,9 +162,10 @@ export default function DiaryToolbar({
 
       {/* Image */}
       <Animated.View
+        pointerEvents={expanded ? 'auto' : 'none'}
         style={[
           localStyles.actionButton,
-          { transform: [{ translateY: menu1TranslateY }], opacity: menu1Opacity },
+          { transform: [{ scale: menu1Scale }], opacity: menu1Opacity },
         ]}>
         <TouchableOpacity
           onPress={() => {
@@ -293,9 +299,8 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
   },
   actionButton: {
-    position: 'absolute',
-    bottom: 0,
     alignItems: 'center',
+    marginBottom: 14,
   },
   secondaryButton: {
     alignItems: 'center',

@@ -270,22 +270,25 @@ const MainTab: React.FC = () => {
   }, [dispatch, router]);
 
   // Animation interpolations
-  const cameraTranslateY = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -70],
-  });
+  // Scale-based animations keep the touch targets at the actual visual position.
+  // The old translateY approach moved buttons outside the container's layout bounds,
+  // so taps hit the backdrop instead of the buttons.
   const cameraOpacity = expandAnim.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 0, 1],
   });
-
-  const micTranslateY = expandAnim.interpolate({
+  const cameraScale = expandAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -140],
+    outputRange: [0.4, 1],
   });
+
   const micOpacity = expandAnim.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 0, 1],
+  });
+  const micScale = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 1],
   });
 
   const rotation = rotateAnim.interpolate({
@@ -310,55 +313,58 @@ const MainTab: React.FC = () => {
       )}
 
       <View style={styles.container}>
-        {/* Expanded action buttons */}
+        {/* Expanded action buttons — rendered above FAB in normal flow so touch
+            targets are at the same position as the visual elements. */}
         <Animated.View
+          pointerEvents={expanded ? 'auto' : 'none'}
           style={[
             styles.actionButton,
             {
-              transform: [{ translateY: micTranslateY }],
+              transform: [{ scale: micScale }],
               opacity: micOpacity,
             },
           ]}>
           <TouchableOpacity onPress={onMicPress} activeOpacity={0.8} style={styles.secondaryButton}>
-          <Animated.View
-            style={[
-              styles.secondaryButtonInner,
-              { backgroundColor: themeColors.surface },
-              isRecording && styles.recordingButton,
-              { transform: [{ scale: isRecording ? pulseAnim : 1 }] },
-            ]}>
-            <Ionicons
-              name={isRecording ? 'stop' : 'mic'}
-              size={18}
-              color={isRecording ? '#fff' : themeColors.accent}
-            />
-          </Animated.View>
-          <Text style={[styles.buttonLabel, { color: themeColors.text }]}>
-            {isRecording ? 'Stop' : 'Record'}
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
+            <Animated.View
+              style={[
+                styles.secondaryButtonInner,
+                { backgroundColor: themeColors.surface },
+                isRecording && styles.recordingButton,
+                { transform: [{ scale: isRecording ? pulseAnim : 1 }] },
+              ]}>
+              <Ionicons
+                name={isRecording ? 'stop' : 'mic'}
+                size={18}
+                color={isRecording ? '#fff' : themeColors.accent}
+              />
+            </Animated.View>
+            <Text style={[styles.buttonLabel, { color: themeColors.text }]}>
+              {isRecording ? 'Stop' : 'Record'}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-      <Animated.View
-        style={[
-          styles.actionButton,
-          {
-            transform: [{ translateY: cameraTranslateY }],
-            opacity: cameraOpacity,
-          },
-        ]}>
-        <TouchableOpacity
-          onPress={() => setCameraModalOpen(true)}
-          activeOpacity={0.8}
-          style={styles.secondaryButton}>
-          <View style={[styles.secondaryButtonInner, { backgroundColor: themeColors.surface }]}>
-            <Feather name="camera" size={18} color={themeColors.accent} />
-          </View>
-          <Text style={[styles.buttonLabel, { color: themeColors.text }]}>Photo</Text>
-        </TouchableOpacity>
-      </Animated.View>
+        <Animated.View
+          pointerEvents={expanded ? 'auto' : 'none'}
+          style={[
+            styles.actionButton,
+            {
+              transform: [{ scale: cameraScale }],
+              opacity: cameraOpacity,
+            },
+          ]}>
+          <TouchableOpacity
+            onPress={() => setCameraModalOpen(true)}
+            activeOpacity={0.8}
+            style={styles.secondaryButton}>
+            <View style={[styles.secondaryButtonInner, { backgroundColor: themeColors.surface }]}>
+              <Feather name="camera" size={18} color={themeColors.accent} />
+            </View>
+            <Text style={[styles.buttonLabel, { color: themeColors.text }]}>Photo</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-      {/* Main FAB */}
+        {/* Main FAB */}
       <TouchableOpacity
         onPress={hasTodayEntry ? toggleExpand : createNewEntry}
         activeOpacity={0.9}
@@ -468,9 +474,8 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   actionButton: {
-    position: 'absolute',
-    bottom: 0,
     alignItems: 'center',
+    marginBottom: 14,
   },
   secondaryButton: {
     alignItems: 'center',

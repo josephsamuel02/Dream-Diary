@@ -14,7 +14,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// redux
+import { useAppDialog } from '~/hooks/useAppDialog';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { replaceBlocksForEntry, removeEntry } from '~/store/slices/diarySlice';
 import { selectThemeColors } from '~/store/slices/themeSlice';
@@ -38,10 +38,10 @@ export default function HistoryItem({
 }) {
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
+  const { showDialog, dialogElement } = useAppDialog();
 
   // menu states
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // coords for icon -> used to position popover
@@ -75,7 +75,6 @@ export default function HistoryItem({
     } finally {
       dispatch(removeEntry(entry.id));
       setBusy(false);
-      setConfirmDelete(false);
       setMenuOpen(false);
     }
   }, [dispatch, entry]);
@@ -85,20 +84,17 @@ export default function HistoryItem({
     try {
       (iconRef.current as any)?.measureInWindow((x: number, y: number, w: number, h: number) => {
         setAnchor({ x, y, w, h });
-        setConfirmDelete(false);
         setMenuOpen(true);
       });
     } catch (e) {
       // fallback: open without anchor (center)
       setAnchor(null);
-      setConfirmDelete(false);
       setMenuOpen(true);
     }
   }, []);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
-    setConfirmDelete(false);
   }, []);
 
   const dateParts = (entry.date ?? '').split('-');
@@ -120,7 +116,7 @@ export default function HistoryItem({
   // compute popover position given anchor; returns {left, top}
   const computePopoverPos = () => {
     const popW = POPOVER_WIDTH;
-    const popH = confirmDelete ? 130 : 120;
+    const popH = 120;
     if (!anchor) {
       const left = Math.max(8, Math.min((SCREEN_W - popW) / 2, SCREEN_W - popW - 8));
       const top = Math.max(8, Math.min((SCREEN_H - popH) / 2, SCREEN_H - popH - 8));
@@ -276,8 +272,7 @@ export default function HistoryItem({
             styles.popoverAbsolute,
             { left: popLeft, top: popTop, backgroundColor: themeColors.surface },
           ]}>
-          {!confirmDelete ? (
-            <>
+          <>
               <TouchableOpacity
                 onPress={() => onOpen(entry.id)}
                 style={styles.popItem}
@@ -308,7 +303,17 @@ export default function HistoryItem({
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setConfirmDelete(true)}
+                onPress={() => {
+                  closeMenu();
+                  showDialog({
+                    title: 'Delete Entry',
+                    message: 'This entry will be permanently removed. This cannot be undone.',
+                    buttons: [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: performDelete },
+                    ],
+                  });
+                }}
                 style={[styles.popItem, styles.destructive]}
                 activeOpacity={0.7}>
                 <Feather
@@ -320,29 +325,9 @@ export default function HistoryItem({
                 <Text style={[styles.popText, { color: themeColors.error }]}>Delete</Text>
               </TouchableOpacity>
             </>
-          ) : (
-            <View style={styles.confirmContainer}>
-              <Text style={[styles.confirmText, { color: themeColors.text }]}>Delete entry?</Text>
-              <View style={styles.confirmRow}>
-                <TouchableOpacity
-                  onPress={() => setConfirmDelete(false)}
-                  style={[styles.confirmBtn, { backgroundColor: themeColors.background }]}
-                  activeOpacity={0.7}>
-                  <Text style={[styles.cancelText, { color: themeColors.text }]}>No</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={performDelete}
-                  style={[styles.confirmBtn, { backgroundColor: themeColors.error }]}
-                  activeOpacity={0.7}
-                  disabled={busy}>
-                  <Text style={styles.deleteText}>{busy ? '...' : 'Yes'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </View>
       </Modal>
+      {dialogElement}
     </TouchableOpacity>
   );
 }
@@ -543,44 +528,5 @@ const styles = StyleSheet.create({
   destructive: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#E5E7EB',
-  },
-  destructiveText: {
-    color: '#DC2626',
-  },
-  confirmContainer: {
-    padding: 12,
-  },
-  confirmText: {
-    textAlign: 'center',
-    color: '#374151',
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  confirmRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  confirmBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelBtn: {
-    backgroundColor: '#F3F4F6',
-  },
-  cancelText: {
-    color: '#374151',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  deleteBtn: {
-    backgroundColor: '#DC2626',
-  },
-  deleteText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12,
   },
 });

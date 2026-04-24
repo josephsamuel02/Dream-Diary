@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
+import { View, Text, Switch, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { useAppDialog } from '~/hooks/useAppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
@@ -21,6 +22,7 @@ export default function Settings() {
   const tc = useAppSelector(selectThemeColors);
 
   const [pickerTarget, setPickerTarget] = useState<'morning' | 'night' | null>(null);
+  const { showDialog, dialogElement } = useAppDialog();
 
   const formatAMPM = (timeStr: string) => {
     const [h, m] = timeStr.split(':').map(Number);
@@ -43,15 +45,20 @@ export default function Settings() {
     if (val) {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       if (!hasHardware) {
-        Alert.alert('Not Supported', 'Your device does not support biometric authentication.');
+        showDialog({
+          title: 'Not Supported',
+          message: 'Your device does not support biometric authentication.',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!isEnrolled) {
-        Alert.alert(
-          'Not Configured',
-          'No biometrics are enrolled on this device. Please set them up in settings.'
-        );
+        showDialog({
+          title: 'Not Configured',
+          message: 'No biometrics are enrolled on this device. Please set them up in settings.',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
         return;
       }
       const result = await LocalAuthentication.authenticateAsync({
@@ -276,6 +283,7 @@ export default function Settings() {
         onConfirm={handlePickerConfirm}
         onCancel={() => setPickerTarget(null)}
       />
+      {dialogElement}
     </ScrollView>
   );
 }

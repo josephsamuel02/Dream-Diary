@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Image,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,6 +12,7 @@ import {
   StyleSheet,
   Switch,
 } from 'react-native';
+import { useAppDialog } from '~/hooks/useAppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -113,6 +113,7 @@ export default function Account() {
 
   // ── Sync state ──────────────────────────────────────────────
   const [syncing, setSyncing] = useState(false);
+  const { showDialog, dialogElement } = useAppDialog();
 
   // ── Photo upload state ──────────────────────────────────────
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -162,10 +163,22 @@ export default function Account() {
 
   // ── Sign Up ─────────────────────────────────────────────────
   const handleSignUp = async () => {
-    if (!authUsername.trim()) return Alert.alert('Missing field', 'Please enter a username.');
-    if (!authEmail.trim()) return Alert.alert('Missing field', 'Please enter your email.');
-    if (authPassword.length < 6) return Alert.alert('Weak password', 'Password must be at least 6 characters.');
-    if (authPassword !== confirmPassword) return Alert.alert('Mismatch', 'Passwords do not match.');
+    if (!authUsername.trim()) {
+      showDialog({ title: 'Missing Field', message: 'Please enter a username.', buttons: [{ text: 'OK', style: 'default' }] });
+      return;
+    }
+    if (!authEmail.trim()) {
+      showDialog({ title: 'Missing Field', message: 'Please enter your email.', buttons: [{ text: 'OK', style: 'default' }] });
+      return;
+    }
+    if (authPassword.length < 6) {
+      showDialog({ title: 'Weak Password', message: 'Password must be at least 6 characters.', buttons: [{ text: 'OK', style: 'default' }] });
+      return;
+    }
+    if (authPassword !== confirmPassword) {
+      showDialog({ title: 'Mismatch', message: 'Passwords do not match.', buttons: [{ text: 'OK', style: 'default' }] });
+      return;
+    }
 
     setAuthLoading(true);
     try {
@@ -201,13 +214,14 @@ export default function Account() {
         }));
       }
 
-      Alert.alert(
-        'Account created!',
-        'Welcome to Dream Diary. Check your email to confirm your account if required.'
-      );
+      showDialog({
+        title: 'Account Created!',
+        message: 'Welcome to Dream Diary. Check your email to confirm your account if required.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
       resetAuthForm();
     } catch (err: any) {
-      Alert.alert('Sign up failed', err.message ?? 'Something went wrong.');
+      showDialog({ title: 'Sign Up Failed', message: err.message ?? 'Something went wrong.', buttons: [{ text: 'OK', style: 'default' }] });
     } finally {
       setAuthLoading(false);
     }
@@ -216,7 +230,8 @@ export default function Account() {
   // ── Sign In ─────────────────────────────────────────────────
   const handleSignIn = async () => {
     if (!authEmail.trim() || !authPassword) {
-      return Alert.alert('Missing fields', 'Please enter your email and password.');
+      showDialog({ title: 'Missing Fields', message: 'Please enter your email and password.', buttons: [{ text: 'OK', style: 'default' }] });
+      return;
     }
 
     setAuthLoading(true);
@@ -228,7 +243,7 @@ export default function Account() {
       if (error) throw error;
       resetAuthForm();
     } catch (err: any) {
-      Alert.alert('Sign in failed', err.message ?? 'Invalid credentials.');
+      showDialog({ title: 'Sign In Failed', message: err.message ?? 'Invalid credentials.', buttons: [{ text: 'OK', style: 'default' }] });
     } finally {
       setAuthLoading(false);
     }
@@ -236,34 +251,38 @@ export default function Account() {
 
   // ── Sign Out ────────────────────────────────────────────────
   const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          setProfile(null);
+    showDialog({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase.auth.signOut();
+            setProfile(null);
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   // ── Delete Account ──────────────────────────────────────────
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account?',
-      'This will permanently delete your account and all your diary data. This action cannot be undone.',
-      [
+    showDialog({
+      title: 'Delete Account?',
+      message: 'This will permanently delete your account and all your diary data. This action cannot be undone.',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Yes, Delete',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
-              'Are you absolutely sure?',
-              'Your account and all diary entries will be erased forever. There is no way to recover this data.',
-              [
+            showDialog({
+              title: 'Are You Absolutely Sure?',
+              message: 'Your account and all diary entries will be erased forever. There is no way to recover this data.',
+              buttons: [
                 { text: 'Go Back', style: 'cancel' },
                 {
                   text: 'Delete Forever',
@@ -272,22 +291,25 @@ export default function Account() {
                     try {
                       const userId = session?.user?.id;
                       if (!userId) return;
-                      // Delete profile row first, then auth user
                       await supabase.from('user').delete().eq('id', userId);
                       await supabase.auth.admin?.deleteUser?.(userId);
                       await supabase.auth.signOut();
                       setProfile(null);
                     } catch (err: any) {
-                      Alert.alert('Error', err.message ?? 'Could not delete account. Please contact support.');
+                      showDialog({
+                        title: 'Error',
+                        message: err.message ?? 'Could not delete account. Please contact support.',
+                        buttons: [{ text: 'OK', style: 'default' }],
+                      });
                     }
                   },
                 },
-              ]
-            );
+              ],
+            });
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   // ── Save profile edits ──────────────────────────────────────
@@ -307,7 +329,7 @@ export default function Account() {
       dispatch(updateAccountProfile({ username: data.username, email: data.email }));
       setIsEditing(false);
     } catch (err: any) {
-      Alert.alert('Save failed', err.message ?? 'Could not update profile.');
+      showDialog({ title: 'Save Failed', message: err.message ?? 'Could not update profile.', buttons: [{ text: 'OK', style: 'default' }] });
     } finally {
       setSaveLoading(false);
     }
@@ -376,7 +398,7 @@ export default function Account() {
       setProfile(updatedProfile as UserProfile);
       dispatch(updateProfilePhoto(publicUrl));
     } catch (err: any) {
-      Alert.alert('Upload failed', err.message ?? 'Could not upload profile image.');
+      showDialog({ title: 'Upload Failed', message: err.message ?? 'Could not upload profile image.', buttons: [{ text: 'OK', style: 'default' }] });
     } finally {
       setUploadingPhoto(false);
     }
@@ -389,14 +411,19 @@ export default function Account() {
     try {
       const { synced, failed } = await syncAllEntries(entries, session.user.id);
       dispatch(setLastSyncedAt(new Date().toISOString()));
-      Alert.alert(
-        'Sync complete',
-        failed > 0
+      showDialog({
+        title: 'Sync Complete',
+        message: failed > 0
           ? `${synced} entries synced, ${failed} failed. They will retry next time.`
-          : `${synced} entries synced successfully.`
-      );
+          : `${synced} entries synced successfully.`,
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     } catch {
-      Alert.alert('Sync failed', 'Could not reach the server. Your entries are saved locally and will sync when you are back online.');
+      showDialog({
+        title: 'Sync Failed',
+        message: 'Could not reach the server. Your entries are saved locally and will sync when you are back online.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     } finally {
       setSyncing(false);
     }
@@ -412,27 +439,31 @@ export default function Account() {
           const { synced, failed } = await syncAllEntries(entries, session.user.id);
           dispatch(setLastSyncedAt(new Date().toISOString()));
           if (failed > 0) {
-            Alert.alert('Partial sync', `${synced} entries synced. ${failed} entries will retry automatically when online.`);
+            showDialog({
+              title: 'Partial Sync',
+              message: `${synced} entries synced. ${failed} entries will retry automatically when online.`,
+              buttons: [{ text: 'OK', style: 'default' }],
+            });
           }
         } catch {
-          Alert.alert('Offline', 'Cloud sync enabled. Your entries will upload automatically when you are back online.');
+          showDialog({
+            title: 'Offline',
+            message: 'Cloud sync enabled. Your entries will upload automatically when you are back online.',
+            buttons: [{ text: 'OK', style: 'default' }],
+          });
         } finally {
           setSyncing(false);
         }
       }
     } else {
-      Alert.alert(
-        'Disable Cloud Sync?',
-        'Your diary entries will only be stored on this device. Existing cloud data is not deleted.',
-        [
+      showDialog({
+        title: 'Disable Cloud Sync?',
+        message: 'Your diary entries will only be stored on this device. Existing cloud data is not deleted.',
+        buttons: [
           { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Disable',
-            style: 'destructive',
-            onPress: () => dispatch(setCloudSync(false)),
-          },
-        ]
-      );
+          { text: 'Disable', style: 'destructive', onPress: () => dispatch(setCloudSync(false)) },
+        ],
+      });
     }
   };
 
@@ -584,6 +615,7 @@ export default function Account() {
   // Signed in → show profile
   // ══════════════════════════════════════════════════════════════
   return (
+    <>
     <ScrollView
       style={{ backgroundColor: themeColors.background }}
       contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 }}>
@@ -777,6 +809,8 @@ export default function Account() {
         <Text style={[styles.deleteAccountText, { color: themeColors.error + 'AA' }]}>Delete Account</Text>
       </TouchableOpacity>
     </ScrollView>
+    {dialogElement}
+  </>
   );
 }
 

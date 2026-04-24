@@ -46,7 +46,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#522017"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -56,7 +56,11 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#522017"
+      },
+      "notification": {
+        "foregroundImage": "./assets/notification-icon.png",
+        "color": "#ffffff"
       },
       "package": "com.dreamdiary.app",
       "edgeToEdgeEnabled": true,
