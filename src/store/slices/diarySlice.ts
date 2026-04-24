@@ -6,11 +6,18 @@ export type ImageBlock = { id: string; type: 'image'; content: string };
 export type AudioBlock = { id: string; type: 'audio'; content: string };
 export type Block = TextBlock | ImageBlock | AudioBlock;
 
+// 5-point mood scale used by the home screen mood selector.
+// Stored on each DiaryEntry so we can compute streaks/averages and
+// render the small mood chip in the entry list.
+export type Mood = 'great' | 'good' | 'okay' | 'notgreat' | 'stressed';
+
 export type DiaryEntry = {
   id: string;
   date: string; // local 'YYYY-MM-DD'
   blocks: Block[];
   title?: string;
+  mood?: Mood;
+  tag?: string;
   // Timestamps used for sync conflict resolution.
   // createdAt: set once when the entry is first created (local time ISO).
   // updatedAt: bumped on every mutation; the local copy is always the
@@ -175,10 +182,10 @@ const DiarySlice = createSlice({
 
     updateEntryMeta(
       state,
-      action: PayloadAction<{ entryId: string; date?: string; title?: string }>
+      action: PayloadAction<{ entryId: string; date?: string; title?: string; mood?: Mood; tag?: string }>
     ) {
       ensureEntries(state);
-      const { entryId, date, title } = action.payload;
+      const { entryId, date, title, mood, tag } = action.payload;
       state.entries = state.entries!.map((e) =>
         e.id !== entryId
           ? e
@@ -186,8 +193,21 @@ const DiarySlice = createSlice({
               ...e,
               ...(date ? { date } : {}),
               ...(title !== undefined ? { title } : {}),
+              ...(mood !== undefined ? { mood } : {}),
+              ...(tag !== undefined ? { tag } : {}),
               updatedAt: nowIso(),
             }
+      );
+    },
+
+    // Convenience action used by the home-screen mood selector. We
+    // upsert today's entry id outside this reducer (via ensureTodayEntry)
+    // and then dispatch this to set the mood without touching blocks.
+    setEntryMood(state, action: PayloadAction<{ entryId: string; mood: Mood }>) {
+      ensureEntries(state);
+      const { entryId, mood } = action.payload;
+      state.entries = state.entries!.map((e) =>
+        e.id !== entryId ? e : { ...e, mood, updatedAt: nowIso() }
       );
     },
 
@@ -213,6 +233,8 @@ const DiarySlice = createSlice({
           date: remote.date,
           blocks: cloneBlocks(remote.blocks ?? []),
           title: remote.title,
+          mood: remote.mood,
+          tag: remote.tag,
           createdAt: remote.createdAt ?? nowIso(),
           updatedAt: remote.updatedAt ?? nowIso(),
         });
@@ -237,6 +259,7 @@ export const {
   updateTextInEntry,
   removeBlockFromEntry,
   updateEntryMeta,
+  setEntryMood,
   mergeRemoteEntries,
   replaceState,
   resetAppState,

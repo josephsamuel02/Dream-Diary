@@ -17,11 +17,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDialog } from '~/hooks/useAppDialog';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { replaceBlocksForEntry, removeEntry } from '~/store/slices/diarySlice';
+import type { Mood } from '~/store/slices/diarySlice';
 import { selectThemeColors } from '~/store/slices/themeSlice';
 import { useToday } from '~/util/useToday';
+import { getMoodMeta } from '~/util/moods';
 
 type Block = { id: string; type: 'text' | 'image' | 'audio'; content: string };
-type Entry = { id: string; date?: string; blocks: Block[]; title?: string };
+type Entry = {
+  id: string;
+  date?: string;
+  blocks: Block[];
+  title?: string;
+  mood?: Mood;
+  tag?: string;
+  updatedAt?: string;
+  createdAt?: string;
+};
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -112,6 +123,15 @@ export default function HistoryItem({
   const hasImage = entry.blocks.some((b) => b.type === 'image');
   const hasAudio = entry.blocks.some((b) => b.type === 'audio');
   const firstImage = entry.blocks.find((b) => b.type === 'image');
+  const moodMeta = getMoodMeta(entry.mood);
+
+  // Title is shown above the preview when set; otherwise the first
+  // line of the preview doubles as the title.
+  const titleLine = entry.title?.trim()
+    || (preview ? preview.split('\n')[0]?.slice(0, 40) : '');
+  const previewBody = entry.title?.trim()
+    ? preview
+    : preview.split('\n').slice(1).join(' ').trim() || preview;
 
   // compute popover position given anchor; returns {left, top}
   const computePopoverPos = () => {
@@ -140,6 +160,18 @@ export default function HistoryItem({
   // moment a new day begins.
   const today = useToday();
   const isToday = entry.date === today;
+
+  // Friendly timestamp for the row footer ("Today, 9:30 AM" or "Apr 14, 9:30 AM").
+  const timestampLabel = (() => {
+    const ts = entry.updatedAt ?? entry.createdAt;
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return '';
+    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    if (isToday) return `Today, ${time}`;
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `${dateStr}, ${time}`;
+  })();
 
   return (
     <TouchableOpacity
@@ -185,24 +217,13 @@ export default function HistoryItem({
 
         {/* Middle: Content */}
         <View style={styles.contentBlock}>
-          {/* Date info row */}
-          <View style={styles.dateInfoRow}>
-            <Text style={[styles.weekdayText, { color: themeColors.text + '80' }]}>{weekday}</Text>
-            <Text style={[styles.yearText, { color: themeColors.text + '50' }]}>{year}</Text>
-            {isToday && (
-              <View style={[styles.todayPill, { backgroundColor: themeColors.accent }]}>
-                <Text style={styles.todayPillText}>TODAY</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Preview text */}
-          {preview ? (
+          {/* Title (or first line of preview) + preview body */}
+          {titleLine ? (
             <Text
-              style={[styles.previewText, { color: themeColors.text }]}
-              numberOfLines={2}
+              style={[styles.titleText, { color: themeColors.text }]}
+              numberOfLines={1}
               ellipsizeMode="tail">
-              {preview}
+              {titleLine}
             </Text>
           ) : (
             <View style={styles.emptyContainer}>
@@ -212,24 +233,76 @@ export default function HistoryItem({
               </Text>
             </View>
           )}
+          {previewBody ? (
+            <Text
+              style={[styles.previewText, { color: themeColors.text + 'B0' }]}
+              numberOfLines={1}
+              ellipsizeMode="tail">
+              {previewBody}
+            </Text>
+          ) : !titleLine ? (
+            <Text
+              style={[styles.previewText, { color: themeColors.text + '70' }]}
+              numberOfLines={1}>
+              Capture your day, reflect and grow.
+            </Text>
+          ) : null}
 
-          {/* Media indicators */}
-          {(hasImage || hasAudio) && (
-            <View style={styles.mediaRow}>
-              {hasImage && (
-                <View style={[styles.mediaIcon, { backgroundColor: themeColors.surface }]}>
-                  <Ionicons name="image" size={11} color={themeColors.accent} />
-                  <Text style={[styles.mediaLabel, { color: themeColors.accent }]}>Photo</Text>
-                </View>
-              )}
-              {hasAudio && (
-                <View style={[styles.mediaIcon, { backgroundColor: themeColors.surface }]}>
-                  <Ionicons name="mic" size={11} color={themeColors.accent} />
-                  <Text style={[styles.mediaLabel, { color: themeColors.accent }]}>Audio</Text>
-                </View>
+          {/* Footer: mood + tag + timestamp */}
+          <View style={styles.footerRow}>
+            <View style={styles.chip}>
+              {moodMeta ? (
+                <>
+                  <Text style={{ fontSize: 12, marginRight: 3 }}>{moodMeta.emoji}</Text>
+                  <Text style={[styles.chipText, { color: moodMeta.color }]}>{moodMeta.label}</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="happy-outline" size={11} color={themeColors.text + '60'} />
+                  <Text style={[styles.chipText, { color: themeColors.text + '70', marginLeft: 3 }]}>
+                    No mood
+                  </Text>
+                </>
               )}
             </View>
-          )}
+
+            <View style={styles.chip}>
+              <Ionicons
+                name="pricetag-outline"
+                size={11}
+                color={entry.tag ? themeColors.accent : themeColors.text + '60'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: entry.tag ? themeColors.accent : themeColors.text + '70', marginLeft: 4 },
+                ]}>
+                {entry.tag || 'Add tag'}
+              </Text>
+            </View>
+
+            {(hasImage || hasAudio) && (
+              <View style={styles.chip}>
+                <Ionicons
+                  name={hasImage ? 'image' : 'mic'}
+                  size={11}
+                  color={themeColors.accent}
+                />
+              </View>
+            )}
+
+            {!!timestampLabel && (
+              <View
+                style={[
+                  styles.timestampPill,
+                  { backgroundColor: themeColors.background, borderColor: themeColors.text + '15' },
+                ]}>
+                <Text style={[styles.timestampText, { color: themeColors.text + '80' }]}>
+                  {timestampLabel}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Right: Thumbnail or arrow */}
@@ -426,9 +499,15 @@ const styles = StyleSheet.create({
     fontFamily: 'RobotoMedium',
     letterSpacing: 1,
   },
-  previewText: {
-    fontSize: 14,
+  titleText: {
+    fontSize: 15,
     lineHeight: 20,
+    fontFamily: 'PoppinsBold',
+    marginBottom: 2,
+  },
+  previewText: {
+    fontSize: 13,
+    lineHeight: 18,
     fontFamily: 'RobotoRegular',
   },
   emptyContainer: {
@@ -440,6 +519,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'RobotoRegular',
     fontStyle: 'italic',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chipText: {
+    fontSize: 11,
+    fontFamily: 'RobotoMedium',
+  },
+  timestampPill: {
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  timestampText: {
+    fontSize: 10,
+    fontFamily: 'RobotoRegular',
   },
   mediaRow: {
     flexDirection: 'row',

@@ -11,8 +11,10 @@ import {
   Animated,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import HeaderMenu from './HeaderMenu';
 
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -64,6 +66,8 @@ const copyFileToAppAsync = async (uri: string, fallbackExt = 'jpg') => {
 
 const MainTab: React.FC = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
   const themeColors = useAppSelector(selectThemeColors);
@@ -71,6 +75,7 @@ const MainTab: React.FC = () => {
   // modal for camera options
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   // Animations
   const expandAnim = useRef(new Animated.Value(0)).current;
@@ -302,6 +307,9 @@ const MainTab: React.FC = () => {
     }
   }, [isRecording, expanded, toggleExpand]);
 
+  // Bottom nav tab definitions (left/right pairs around the centered FAB).
+  const isActive = (paths: string[]) => paths.some((p) => pathname === p || pathname?.startsWith(p));
+
   return (
     <>
       {/* Backdrop overlay to close menu when tapping outside */}
@@ -312,17 +320,16 @@ const MainTab: React.FC = () => {
         />
       )}
 
-      <View style={styles.container}>
-        {/* Expanded action buttons — rendered above FAB in normal flow so touch
-            targets are at the same position as the visual elements. */}
+      {/* Floating expanded actions (mic / photo) — sit above the FAB
+          when the user long-presses / re-taps to add media. */}
+      <View
+        style={[styles.expandedActions, { bottom: 70 + insets.bottom }]}
+        pointerEvents={expanded ? 'box-none' : 'none'}>
         <Animated.View
           pointerEvents={expanded ? 'auto' : 'none'}
           style={[
             styles.actionButton,
-            {
-              transform: [{ scale: micScale }],
-              opacity: micOpacity,
-            },
+            { transform: [{ scale: micScale }], opacity: micOpacity },
           ]}>
           <TouchableOpacity onPress={onMicPress} activeOpacity={0.8} style={styles.secondaryButton}>
             <Animated.View
@@ -348,10 +355,7 @@ const MainTab: React.FC = () => {
           pointerEvents={expanded ? 'auto' : 'none'}
           style={[
             styles.actionButton,
-            {
-              transform: [{ scale: cameraScale }],
-              opacity: cameraOpacity,
-            },
+            { transform: [{ scale: cameraScale }], opacity: cameraOpacity },
           ]}>
           <TouchableOpacity
             onPress={() => setCameraModalOpen(true)}
@@ -363,27 +367,77 @@ const MainTab: React.FC = () => {
             <Text style={[styles.buttonLabel, { color: themeColors.text }]}>Photo</Text>
           </TouchableOpacity>
         </Animated.View>
+      </View>
 
-        {/* Main FAB */}
-      <TouchableOpacity
-        onPress={hasTodayEntry ? toggleExpand : createNewEntry}
-        activeOpacity={0.9}
-        style={styles.fabContainer}>
-        <LinearGradient
-          colors={[themeColors.headerGradient[1], themeColors.headerGradient[0]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.fab, { shadowColor: themeColors.accent }]}>
-          <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
-            <Ionicons name={hasTodayEntry ? 'add' : 'create-outline'} size={26} color="#fff" />
-          </Animated.View>
-        </LinearGradient>
-        {!hasTodayEntry && (
-          <View style={[styles.fabBadge, { backgroundColor: themeColors.accent }]}>
-            <Text style={styles.fabBadgeText}>New</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      {/* Bottom navigation bar with centered FAB */}
+      <View
+        style={[
+          styles.tabBar,
+          {
+            backgroundColor: themeColors.surface,
+            borderColor: themeColors.accent + '20',
+            paddingBottom: Math.max(insets.bottom, 8),
+          },
+        ]}>
+        <NavButton
+          icon="home"
+          label="Home"
+          active={isActive(['/', '/index'])}
+          themeColors={themeColors}
+          onPress={() => router.push('/')}
+        />
+        <NavButton
+          icon="book-outline"
+          label="Journey"
+          active={isActive(['/AllEntries'])}
+          themeColors={themeColors}
+          onPress={() => router.push('/AllEntries')}
+        />
+
+        {/* Center FAB — pencil when no entry yet, plus when expanded */}
+        <View style={styles.fabSlot}>
+          <TouchableOpacity
+            onPress={hasTodayEntry ? toggleExpand : createNewEntry}
+            activeOpacity={0.9}
+            style={styles.fabContainer}>
+            <LinearGradient
+              colors={[themeColors.accent, themeColors.accent + 'DD']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.fab, { shadowColor: themeColors.accent }]}>
+              <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
+                <Ionicons
+                  name={hasTodayEntry ? 'add' : 'create-outline'}
+                  size={26}
+                  color="#fff"
+                />
+              </Animated.View>
+            </LinearGradient>
+            {!hasTodayEntry && (
+              <View style={[styles.fabBadge, { backgroundColor: themeColors.accent }]}>
+                <Text style={styles.fabBadgeText}>New</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <NavButton
+          icon="stats-chart-outline"
+          label="Insights"
+          active={isActive(['/Insights'])}
+          themeColors={themeColors}
+          onPress={() => router.push('/AllEntries')}
+        />
+        <NavButton
+          icon="grid-outline"
+          label="More"
+          active={moreMenuOpen}
+          themeColors={themeColors}
+          onPress={() => setMoreMenuOpen(true)}
+        />
+      </View>
+
+      <HeaderMenu visible={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
 
       {/* Camera options modal */}
       <Modal
@@ -446,14 +500,56 @@ const MainTab: React.FC = () => {
         </View>
       </Modal>
 
-        {/* busy indicator when copying/deleting etc */}
-        {busy && (
-          <View style={styles.busyOverlay}>
-            <ActivityIndicator size="large" color={themeColors.accent} />
-          </View>
-        )}
-      </View>
+      {/* busy indicator when copying/deleting etc */}
+      {busy && (
+        <View style={styles.busyOverlay}>
+          <ActivityIndicator size="large" color={themeColors.accent} />
+        </View>
+      )}
     </>
+  );
+};
+
+// Single tab item rendered inside the bottom nav bar.
+const NavButton = ({
+  icon,
+  label,
+  active,
+  themeColors,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active?: boolean;
+  themeColors: { text: string; accent: string; surface: string; background: string };
+  onPress: () => void;
+}) => {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={styles.navButton}>
+      <View
+        style={[
+          styles.navIconWrap,
+          active && {
+            backgroundColor: themeColors.accent + '20',
+          },
+        ]}>
+        <Ionicons
+          name={icon}
+          size={20}
+          color={active ? themeColors.accent : themeColors.text + '80'}
+        />
+      </View>
+      <Text
+        style={[
+          styles.navLabel,
+          { color: active ? themeColors.accent : themeColors.text + '90' },
+        ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 };
 
@@ -466,16 +562,61 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 99,
   },
-  container: {
+  // Bottom nav bar that stretches across the full width.
+  tabBar: {
     position: 'absolute',
-    bottom: 30,
-    right: 20,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
     zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 12,
+  },
+  navButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  navIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navLabel: {
+    marginTop: 2,
+    fontSize: 10,
+    fontFamily: 'RobotoMedium',
+  },
+  fabSlot: {
+    width: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -28,
+  },
+  expandedActions: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 28,
+    zIndex: 101,
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 14,
   },
   secondaryButton: {
     alignItems: 'center',
