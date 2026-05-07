@@ -15,6 +15,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HeaderMenu from './HeaderMenu';
+import BottomMenu from './BottomMenu';
 
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -31,7 +32,7 @@ import {
 // redux
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { selectEntries, addBlockToEntry } from '~/store/slices/diarySlice';
-import { selectThemeColors } from '~/store/slices/themeSlice';
+import { selectCurrentTheme, selectThemeColors } from '~/store/slices/themeSlice';
 import { store } from '~/store/store';
 import { useToday } from '~/util/useToday';
 import { ensureTodayEntry } from '~/util/ensureTodayEntry';
@@ -71,6 +72,8 @@ const MainTab: React.FC = () => {
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
   const themeColors = useAppSelector(selectThemeColors);
+  const currentTheme = useAppSelector(selectCurrentTheme);
+  const isDarkTheme = currentTheme === 'dark';
 
   // modal for camera options
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
@@ -81,6 +84,7 @@ const MainTab: React.FC = () => {
   const expandAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fabPulseAnim = useRef(new Animated.Value(1)).current;
 
   // audio recorder
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -115,6 +119,24 @@ const MainTab: React.FC = () => {
       pulseAnim.setValue(1);
     }
   }, [isRecording]);
+
+  // FAB Pulse animation (continuous)
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fabPulseAnim, {
+          toValue: 1.08,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabPulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   const toggleExpand = () => {
     const toValue = expanded ? 0 : 1;
@@ -369,14 +391,13 @@ const MainTab: React.FC = () => {
         </Animated.View>
       </View>
 
-      {/* Bottom navigation bar with centered FAB */}
       <View
         style={[
           styles.tabBar,
           {
             backgroundColor: themeColors.surface,
             borderColor: themeColors.accent + '20',
-            paddingBottom: Math.max(insets.bottom, 8),
+            paddingBottom: Math.max(insets.bottom * 0.4, 8),
           },
         ]}>
         <NavButton
@@ -386,48 +407,36 @@ const MainTab: React.FC = () => {
           themeColors={themeColors}
           onPress={() => router.push('/')}
         />
-        <NavButton
-          icon="book-outline"
-          label="Journey"
-          active={isActive(['/AllEntries'])}
-          themeColors={themeColors}
-          onPress={() => router.push('/AllEntries')}
-        />
 
         {/* Center FAB — pencil when no entry yet, plus when expanded */}
         <View style={styles.fabSlot}>
-          <TouchableOpacity
-            onPress={hasTodayEntry ? toggleExpand : createNewEntry}
-            activeOpacity={0.9}
-            style={styles.fabContainer}>
-            <LinearGradient
-              colors={[themeColors.accent, themeColors.accent + 'DD']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.fab, { shadowColor: themeColors.accent }]}>
-              <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
-                <Ionicons
-                  name={hasTodayEntry ? 'add' : 'create-outline'}
-                  size={26}
-                  color="#fff"
-                />
-              </Animated.View>
-            </LinearGradient>
-            {!hasTodayEntry && (
-              <View style={[styles.fabBadge, { backgroundColor: themeColors.accent }]}>
-                <Text style={styles.fabBadgeText}>New</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: fabPulseAnim }] }}>
+            <TouchableOpacity
+              onPress={hasTodayEntry ? toggleExpand : createNewEntry}
+              activeOpacity={0.9}
+              style={styles.fabContainer}>
+              <LinearGradient
+                colors={[themeColors.accent, themeColors.accent + 'DD']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.fab, { shadowColor: themeColors.accent }]}>
+                <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
+                  <Ionicons
+                    name={hasTodayEntry ? 'add' : 'create-outline'}
+                    size={26}
+                    color="#000"
+                  />
+                </Animated.View>
+              </LinearGradient>
+              {!hasTodayEntry && (
+                <View style={[styles.fabBadge, { backgroundColor: themeColors.accent }]}>
+                  <Text style={styles.fabBadgeText}>New</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
         </View>
 
-        <NavButton
-          icon="stats-chart-outline"
-          label="Insights"
-          active={isActive(['/Insights'])}
-          themeColors={themeColors}
-          onPress={() => router.push('/AllEntries')}
-        />
         <NavButton
           icon="grid-outline"
           label="More"
@@ -437,7 +446,7 @@ const MainTab: React.FC = () => {
         />
       </View>
 
-      <HeaderMenu visible={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
+      <BottomMenu visible={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
 
       {/* Camera options modal */}
       <Modal
@@ -571,8 +580,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingHorizontal: 12,
+    paddingTop: 4,
     borderTopWidth: 1,
     zIndex: 100,
     shadowColor: '#000',
@@ -585,18 +594,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   navIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   navLabel: {
-    marginTop: 2,
-    fontSize: 10,
+    marginTop: 1,
+    fontSize: 9,
     fontFamily: 'RobotoMedium',
   },
   fabSlot: {

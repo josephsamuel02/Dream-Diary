@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+﻿import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,19 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Entypo } from '@expo/vector-icons';
 
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
-import { selectEntries, setEntryMood } from '~/store/slices/diarySlice';
-import type { Mood } from '~/store/slices/diarySlice';
+import {
+  selectEntries,
+  addMoodToEntry,
+  selectCanAddMood,
+  MAX_MOODS_PER_DAY,
+} from '~/store/slices/diarySlice';
+import type { Mood, MoodEntry } from '~/store/slices/diarySlice';
 import {
   selectThemeColors,
   selectBackgroundImage,
@@ -28,8 +32,28 @@ import MainTab from '~/components/mainTab';
 import HistoryItem from '~/components/historyItem';
 import { ensureTodayEntry } from '~/util/ensureTodayEntry';
 import { useToday } from '~/util/useToday';
-import { getDailyPrompt, getRandomIdea } from '~/util/prompts';
-import { MOODS, averageMoodLabel } from '~/util/moods';
+import { MOODS, formatMoodTime, getMoodMeta } from '~/util/moods';
+import { getTimeGreeting, getSingleDailyQuote } from '~/util/greetings';
+import { useAchievements } from '~/hooks/useAchievements';
+import { BADGES } from '~/constants/badges';
+
+// One hour in milliseconds
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+// Check if the mood was selected within the last hour
+const isWithinLastHour = (timestamp: string): boolean => {
+  const moodTime = new Date(timestamp).getTime();
+  const now = Date.now();
+  return now - moodTime < ONE_HOUR_MS;
+};
+
+// Get remaining minutes until mood can be changed
+const getRemainingMinutes = (timestamp: string): number => {
+  const moodTime = new Date(timestamp).getTime();
+  const unlockTime = moodTime + ONE_HOUR_MS;
+  const remaining = unlockTime - Date.now();
+  return Math.max(0, Math.ceil(remaining / (60 * 1000)));
+};
 
 const Index = () => {
   const router = useRouter();
@@ -43,13 +67,37 @@ const Index = () => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+  const wiggleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
-  }, [fadeAnim, slideAnim]);
+
+    // Wiggle every 4 seconds
+    const startWiggle = () => {
+      Animated.sequence([
+        Animated.delay(4000),
+        Animated.timing(wiggleAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+        Animated.timing(wiggleAnim, { toValue: -1, duration: 80, useNativeDriver: true }),
+        Animated.timing(wiggleAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+        Animated.timing(wiggleAnim, { toValue: -1, duration: 80, useNativeDriver: true }),
+        Animated.timing(wiggleAnim, { toValue: 0, duration: 80, useNativeDriver: true }),
+      ]).start(() => startWiggle());
+    };
+    startWiggle();
+  }, [fadeAnim, slideAnim, wiggleAnim]);
+
+  const bookRotation = wiggleAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-22deg', '-8deg', '6deg'],
+  });
+
+  const bookScale = wiggleAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: [1.2, 1, 1.2],
+  });
 
   // Sorted (newest-first) entries — used everywhere on the home screen.
   const entries = useMemo(() => {
@@ -60,40 +108,22 @@ const Index = () => {
     });
   }, [entriesRaw]);
 
-  const todayEntry = useMemo(
-    () => entries.find((e) => e.date === todayIso),
-    [entries, todayIso]
-  );
+  const todayEntry = useMemo(() => entries.find((e) => e.date === todayIso), [entries, todayIso]);
 
-  // Day-period greeting drives the hero card icon + label.
-  const hour = new Date().getHours();
-  const period: 'morning' | 'afternoon' | 'evening' =
-    hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 18 ? 'afternoon' : 'evening';
-  const greetingLabel =
-    period === 'morning' ? 'Good morning!' : period === 'afternoon' ? 'Good afternoon!' : 'Good evening!';
-  const greetingIcon = period === 'morning' ? 'sunny' : period === 'afternoon' ? 'partly-sunny' : 'moon';
+  // Greeting — randomly picked from the time-of-day pool on each mount.
+  const [greeting] = useState(() => getTimeGreeting());
+  const greetingLabel = greeting.text;
+  const greetingIcon = greeting.icon;
 
   // Stats
   const totalEntries = entries.length;
 
-  const thisWeekEntries = useMemo(() => {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return entries.filter((e) => new Date(e.date) >= weekAgo).length;
-  }, [entries]);
-
-  const lastWeekEntries = useMemo(() => {
-    const start = new Date();
-    start.setDate(start.getDate() - 14);
-    const end = new Date();
-    end.setDate(end.getDate() - 7);
-    return entries.filter((e) => {
-      const d = new Date(e.date);
-      return d >= start && d < end;
-    }).length;
-  }, [entries]);
-
-  const weekDelta = thisWeekEntries - lastWeekEntries;
+  // Current badge level from the achievements system.
+  const { totalCompletedDays, unlockedBadges } = useAchievements();
+  const currentBadge = useMemo(() => {
+    const earned = BADGES.filter((b) => unlockedBadges.includes(b.id));
+    return earned.length > 0 ? earned[earned.length - 1] : null;
+  }, [unlockedBadges]);
 
   // Day streak — count back consecutive days that have an entry.
   const dayStreak = useMemo(() => {
@@ -118,30 +148,69 @@ const Index = () => {
     return streak;
   }, [entries]);
 
-  const weekMoods = useMemo(() => {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return entries
-      .filter((e) => new Date(e.date) >= weekAgo)
-      .map((e) => e.mood)
-      .filter((m): m is Mood => Boolean(m));
-  }, [entries]);
+  // Single quote that changes after 3 PM.
+  const dailyQuote = useMemo(() => getSingleDailyQuote(new Date()), [todayIso]);
 
-  const avgMood = averageMoodLabel(weekMoods);
+  // Today's moods array
+  const todayMoods: MoodEntry[] = todayEntry?.moods ?? [];
+  const canAddMood = todayMoods.length < MAX_MOODS_PER_DAY;
+  const [showLimitWarning, setShowLimitWarning] = useState(false);
+  const [showCooldownWarning, setShowCooldownWarning] = useState(false);
 
-  // Daily prompt — rotates with the day-of-year.
-  const dailyPrompt = useMemo(() => getDailyPrompt(new Date()), [todayIso]);
+  // Get the latest mood for cooldown check
+  const latestMood = todayMoods.length > 0 ? todayMoods[todayMoods.length - 1] : null;
 
-  // Selected mood mirrors the today-entry mood so the active emoji
-  // ring stays in sync after a refresh.
-  const selectedMood: Mood | undefined = todayEntry?.mood;
+  // Check if mood is locked (within last hour)
+  const isMoodLocked = useMemo(() => {
+    if (!latestMood) return false;
+    return isWithinLastHour(latestMood.timestamp);
+  }, [latestMood]);
+
+  // Remaining minutes display
+  const [remainingMinutes, setRemainingMinutes] = useState(0);
+
+  // Update remaining minutes every minute
+  useEffect(() => {
+    if (!latestMood || !isMoodLocked) {
+      setRemainingMinutes(0);
+      return;
+    }
+
+    const updateRemaining = () => {
+      const mins = getRemainingMinutes(latestMood.timestamp);
+      setRemainingMinutes(mins);
+    };
+
+    updateRemaining();
+    const interval = setInterval(updateRemaining, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [latestMood, isMoodLocked]);
 
   const handleSelectMood = useCallback(
     (mood: Mood) => {
+      // Check cooldown first
+      if (isMoodLocked) {
+        setShowCooldownWarning(true);
+        setTimeout(() => setShowCooldownWarning(false), 3000);
+        return;
+      }
+
       const entryId = ensureTodayEntry(store.getState, dispatch);
-      dispatch(setEntryMood({ entryId, mood }));
+      
+      // Check if we can add more moods
+      const state = store.getState();
+      const canAdd = selectCanAddMood(state, entryId);
+      
+      if (!canAdd) {
+        setShowLimitWarning(true);
+        setTimeout(() => setShowLimitWarning(false), 3000);
+        return;
+      }
+      
+      dispatch(addMoodToEntry({ entryId, mood }));
     },
-    [dispatch]
+    [dispatch, isMoodLocked]
   );
 
   const openTodayEntry = useCallback(() => {
@@ -155,10 +224,6 @@ const Index = () => {
     },
     [router]
   );
-
-  const showIdea = useCallback(() => {
-    Alert.alert('Need ideas?', getRandomIdea(), [{ text: 'OK' }]);
-  }, []);
 
   const recentEntries = entries.slice(0, 2);
 
@@ -185,20 +250,50 @@ const Index = () => {
               style={[indexStyles.heroCard, { borderColor: themeColors.accent + '25' }]}>
               {/* Decorative book illustration */}
               <View style={indexStyles.heroIllustration} pointerEvents="none">
-                <Ionicons name="sparkles" size={14} color={themeColors.accent} style={{ position: 'absolute', top: 6, left: 4, opacity: 0.9 }} />
-                <Ionicons name="sparkles-outline" size={10} color={themeColors.accent} style={{ position: 'absolute', top: 30, left: 30, opacity: 0.7 }} />
-                <Ionicons name="sparkles" size={8} color={themeColors.accent} style={{ position: 'absolute', bottom: 12, right: 4, opacity: 0.6 }} />
-                <View style={[indexStyles.bookShadow, { backgroundColor: themeColors.accent + '20' }]} />
-                <View style={[indexStyles.bookCover, { backgroundColor: '#5C2B0D', borderColor: themeColors.accent + '60' }]}>
+                <Ionicons
+                  name="sparkles"
+                  size={12}
+                  color={themeColors.accent}
+                  style={{ position: 'absolute', top: 4, left: 3, opacity: 0.9 }}
+                />
+                <Ionicons
+                  name="sparkles-outline"
+                  size={8}
+                  color={themeColors.accent}
+                  style={{ position: 'absolute', top: 24, left: 24, opacity: 0.7 }}
+                />
+                <Ionicons
+                  name="sparkles"
+                  size={7}
+                  color={themeColors.accent}
+                  style={{ position: 'absolute', bottom: 10, right: 3, opacity: 0.6 }}
+                />
+                <View
+                  style={[indexStyles.bookShadow, { backgroundColor: themeColors.accent + '20' }]}
+                />
+                <Animated.View
+                  style={[
+                    indexStyles.bookCover,
+                    {
+                      backgroundColor: '#5C2B0D',
+                      borderColor: themeColors.accent + '60',
+                      transform: [{ rotate: bookRotation }, { scale: bookScale }],
+                    },
+                  ]}>
                   <View style={[indexStyles.bookSpine, { backgroundColor: '#3B1A08' }]} />
-                  <Ionicons name="leaf" size={20} color={themeColors.accent} style={{ opacity: 0.7 }} />
+                  <Ionicons
+                    name="leaf"
+                    size={16}
+                    color={themeColors.accent}
+                    style={{ opacity: 0.7 }}
+                  />
                   <View style={[indexStyles.bookStrap, { backgroundColor: '#3B1A08' }]} />
-                </View>
+                </Animated.View>
               </View>
 
-              <View style={{ flex: 1, paddingRight: 90 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <Ionicons name={greetingIcon as any} size={14} color={themeColors.accent} />
+              <View style={{ flex: 1, paddingRight: 82 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                  <Ionicons name={greetingIcon as any} size={13} color={themeColors.accent} />
                   <Text style={[indexStyles.heroEyebrow, { color: themeColors.accent }]}>
                     {greetingLabel}
                   </Text>
@@ -210,15 +305,18 @@ const Index = () => {
                   Start writing and clear your mind.
                 </Text>
 
-                <TouchableOpacity activeOpacity={0.85} onPress={openTodayEntry} style={{ alignSelf: 'flex-start', marginTop: 14 }}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={openTodayEntry}
+                  style={{ alignSelf: 'flex-start', marginTop: 10 }}>
                   <LinearGradient
                     colors={[themeColors.accent, themeColors.accent + 'CC']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={indexStyles.heroButton}>
-                    <Ionicons name="create-outline" size={15} color="#fff" />
+                    <Ionicons name="create-outline" size={15} color="#000" />
                     <Text style={indexStyles.heroButtonText}>Write in Diary</Text>
-                    <Ionicons name="chevron-forward" size={14} color="#fff" />
+                    <Ionicons name="chevron-forward" size={14} color="#000" />
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -226,95 +324,44 @@ const Index = () => {
           </View>
 
           {/* ---------- STATS ROW ---------- */}
-          <View style={{ marginTop: 12 }}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
-              <StatCard
-                icon="flame"
-                iconColor="#E07A4A"
-                value={String(dayStreak)}
-                label="Day Streak"
-                hint={dayStreak > 0 ? 'Keep it up! 🔥' : 'Start today!'}
-                themeColors={themeColors}
-              />
-              <StatCard
-                icon="book"
-                iconColor="#5FB344"
-                value={String(totalEntries)}
-                label="Entries"
-                hint="Total"
-                themeColors={themeColors}
-              />
-              <StatCard
-                icon="trending-up"
-                iconColor="#A78BFA"
-                value={String(thisWeekEntries)}
-                label="This Week"
-                hint={
-                  weekDelta > 0
-                    ? `+${weekDelta} from last week`
-                    : weekDelta < 0
-                      ? `${weekDelta} from last week`
-                      : 'Same as last week'
-                }
-                hintColor={weekDelta > 0 ? '#5FB344' : weekDelta < 0 ? themeColors.error : undefined}
-                themeColors={themeColors}
-              />
-              <StatCard
-                icon="happy"
-                iconColor="#E48BB8"
-                value={avgMood.label}
-                label="Avg Mood"
-                hint={`This Week ${avgMood.emoji}`}
-                themeColors={themeColors}
-                valueIsText
-              />
-            </ScrollView>
+          <View style={{ marginTop: 12, paddingHorizontal: 16, flexDirection: 'row', gap: 10 }}>
+            <StatCard
+              value={String(dayStreak)}
+              label="Day Streak"
+              hint={dayStreak > 0 ? 'Keep it up! 🔥' : 'Start today!'}
+              themeColors={themeColors}
+            />
+            <StatCard
+              value={currentBadge ? currentBadge.icon : '—'}
+              label="Badge Level"
+              hint={currentBadge ? currentBadge.title : 'Keep writing!'}
+              themeColors={themeColors}
+              valueIsText
+            />
+            <StatCard
+              value={String(totalEntries)}
+              label="Entries"
+              hint="Total written"
+              themeColors={themeColors}
+            />
           </View>
 
-          {/* ---------- DAILY REFLECTION PROMPT ---------- */}
+          {/* ---------- DAILY QUOTE ---------- */}
           <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
-            <View
-              style={[
-                indexStyles.promptCard,
-                { backgroundColor: themeColors.surface, borderColor: themeColors.accent + '25' },
-              ]}>
+            <View style={[indexStyles.promptCard, { backgroundColor: themeColors.surface, borderColor: themeColors.accent + '25' }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="sparkles" size={12} color={themeColors.accent} />
-                  <Text style={[indexStyles.promptEyebrow, { color: themeColors.accent }]}>
-                    DAILY REFLECTION PROMPT
-                  </Text>
+                  <Text style={[indexStyles.promptEyebrow, { color: themeColors.accent }]}>DAILY QUOTE</Text>
                 </View>
-                <Text style={[indexStyles.promptMeta, { color: themeColors.text, opacity: 0.5 }]}>
-                  New prompt every day
-                </Text>
+                <Text style={[indexStyles.promptMeta, { color: themeColors.text, opacity: 0.5 }]}>New quote every afternoon</Text>
               </View>
-
-              <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                <Text style={[indexStyles.promptQuoteMark, { color: themeColors.accent }]}>“</Text>
-                <Text style={[indexStyles.promptText, { color: themeColors.text }]}>
-                  {dailyPrompt}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-                <TouchableOpacity
-                  onPress={openTodayEntry}
-                  activeOpacity={0.8}
-                  style={[indexStyles.promptButton, { backgroundColor: themeColors.accent + '20', borderColor: themeColors.accent + '40' }]}>
-                  <Ionicons name="create-outline" size={13} color={themeColors.accent} />
-                  <Text style={[indexStyles.promptButtonText, { color: themeColors.accent }]}>
-                    Use This Prompt
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={showIdea} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="bulb-outline" size={13} color={themeColors.accent} />
-                  <Text style={[indexStyles.needIdeasText, { color: themeColors.accent }]}>Need ideas?</Text>
-                </TouchableOpacity>
+              <View style={indexStyles.quoteBlock}>
+                <Text style={[indexStyles.promptQuoteMark, { color: themeColors.accent }]}>"</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[indexStyles.promptText, { color: themeColors.text }]}>{dailyQuote.text}</Text>
+                  <Text style={[indexStyles.quoteAuthor, { color: themeColors.accent }]}>— {dailyQuote.author}</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -326,33 +373,35 @@ const Index = () => {
                 indexStyles.moodCard,
                 { backgroundColor: themeColors.surface, borderColor: themeColors.accent + '25' },
               ]}>
-              <Text style={[indexStyles.moodTitle, { color: themeColors.text }]}>
-                How are you feeling right now?
-              </Text>
+              <View style={indexStyles.moodHeader}>
+                <Text style={[indexStyles.moodTitle, { color: themeColors.text }]}>
+                  How are you feeling right now?
+                </Text>
+                <Text style={[indexStyles.moodSubtitle, { color: themeColors.text + '60' }]}>
+                  {isMoodLocked
+                    ? `Locked for ${remainingMinutes} min`
+                    : canAddMood
+                    ? `${MAX_MOODS_PER_DAY - todayMoods.length} left today`
+                    : 'Limit reached'}
+                </Text>
+              </View>
+              
               <View style={indexStyles.moodRow}>
                 {MOODS.map((m) => {
-                  const active = selectedMood === m.key;
+                  const isDisabled = !canAddMood || isMoodLocked;
                   return (
                     <Pressable
                       key={m.key}
                       onPress={() => handleSelectMood(m.key)}
-                      style={indexStyles.moodItem}>
-                      <View
-                        style={[
-                          indexStyles.moodCircle,
-                          { backgroundColor: m.color },
-                          active && {
-                            borderColor: themeColors.accent,
-                            borderWidth: 2.5,
-                            transform: [{ scale: 1.05 }],
-                          },
-                        ]}>
-                        <Text style={indexStyles.moodEmoji}>{m.emoji}</Text>
+                      disabled={isDisabled}
+                      style={[indexStyles.moodItem, isDisabled && { opacity: 0.4 }]}>
+                      <View style={indexStyles.moodCircle}>
+                        <Entypo name={m.icon as any} size={22} color={m.color} />
                       </View>
                       <Text
                         style={[
                           indexStyles.moodLabel,
-                          { color: themeColors.text, opacity: active ? 1 : 0.7 },
+                          { color: themeColors.text, opacity: 0.7 },
                         ]}>
                         {m.label}
                       </Text>
@@ -360,6 +409,61 @@ const Index = () => {
                   );
                 })}
               </View>
+
+              {/* Warning messages */}
+              {showLimitWarning && (
+                <View style={[indexStyles.warningBanner, { backgroundColor: themeColors.error + '20' }]}>
+                  <Ionicons name="warning" size={14} color={themeColors.error} />
+                  <Text style={[indexStyles.warningText, { color: themeColors.error }]}>
+                    You can only update your mood {MAX_MOODS_PER_DAY} times per day
+                  </Text>
+                </View>
+              )}
+
+              {showCooldownWarning && (
+                <View style={[indexStyles.warningBanner, { backgroundColor: themeColors.accent + '20' }]}>
+                  <Ionicons name="time" size={14} color={themeColors.accent} />
+                  <Text style={[indexStyles.warningText, { color: themeColors.accent }]}>
+                    Wait {remainingMinutes} more minutes before changing mood
+                  </Text>
+                </View>
+              )}
+
+              {/* Today's moods timeline */}
+              {todayMoods.length > 0 && (
+                <View style={indexStyles.moodTimeline}>
+                  <Text style={[indexStyles.timelineTitle, { color: themeColors.text + '70' }]}>
+                    Today's Moods
+                  </Text>
+                  <View style={indexStyles.timelineRow}>
+                    {todayMoods.map((moodEntry, index) => {
+                      const meta = getMoodMeta(moodEntry.mood);
+                      const time = formatMoodTime(moodEntry.timestamp);
+                      const isLast = index === todayMoods.length - 1;
+                      return (
+                        <View
+                          key={`${moodEntry.timestamp}-${index}`}
+                          style={[
+                            indexStyles.timelineItem,
+                            { backgroundColor: themeColors.background },
+                          ]}>
+                          <Entypo
+                            name={meta?.icon as any}
+                            size={16}
+                            color={meta?.color ?? themeColors.text}
+                          />
+                          <Text style={[indexStyles.timelineTime, { color: themeColors.text + '80' }]}>
+                            {time}
+                          </Text>
+                          {isLast && isMoodLocked && (
+                            <Ionicons name="lock-closed" size={10} color={themeColors.text + '50'} />
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
             </View>
           </View>
 
@@ -375,14 +479,21 @@ const Index = () => {
               <Pressable
                 onPress={() => router.push('/AllEntries')}
                 style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[indexStyles.viewAllText, { color: themeColors.accent }]}>View All</Text>
+                <Text style={[indexStyles.viewAllText, { color: themeColors.accent }]}>
+                  View All
+                </Text>
                 <Ionicons name="chevron-forward" size={14} color={themeColors.accent} />
               </Pressable>
             </View>
 
             {recentEntries.length === 0 ? (
               <View
-                style={{ backgroundColor: themeColors.surface, borderRadius: 16, padding: 24, alignItems: 'center' }}>
+                style={{
+                  backgroundColor: themeColors.surface,
+                  borderRadius: 16,
+                  padding: 24,
+                  alignItems: 'center',
+                }}>
                 <View
                   style={{
                     width: 56,
@@ -395,10 +506,23 @@ const Index = () => {
                   }}>
                   <Ionicons name="journal-outline" size={26} color={themeColors.accent} />
                 </View>
-                <Text style={{ color: themeColors.text, fontFamily: 'PoppinsBold', fontSize: 16, marginBottom: 4 }}>
+                <Text
+                  style={{
+                    color: themeColors.text,
+                    fontFamily: 'PoppinsBold',
+                    fontSize: 16,
+                    marginBottom: 4,
+                  }}>
                   Start Your Journey
                 </Text>
-                <Text style={{ color: themeColors.text, opacity: 0.6, fontFamily: 'RobotoRegular', fontSize: 12, textAlign: 'center' }}>
+                <Text
+                  style={{
+                    color: themeColors.text,
+                    opacity: 0.6,
+                    fontFamily: 'RobotoRegular',
+                    fontSize: 12,
+                    textAlign: 'center',
+                  }}>
                   Tap the + button to create your first entry.
                 </Text>
               </View>
@@ -423,8 +547,6 @@ const Index = () => {
 
 // Compact stat card used in the horizontal scroll row.
 const StatCard = ({
-  icon,
-  iconColor,
   value,
   label,
   hint,
@@ -432,8 +554,6 @@ const StatCard = ({
   themeColors,
   valueIsText = false,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
   value: string;
   label: string;
   hint: string;
@@ -447,30 +567,22 @@ const StatCard = ({
         indexStyles.statCard,
         { backgroundColor: themeColors.surface, borderColor: themeColors.accent + '20' },
       ]}>
-      <View style={[indexStyles.statIconCircle, { backgroundColor: iconColor + '25' }]}>
-        <Ionicons name={icon} size={16} color={iconColor} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[
-            indexStyles.statValue,
-            { color: themeColors.text, fontSize: valueIsText ? 14 : 18 },
-          ]}
-          numberOfLines={1}>
-          {value}
-        </Text>
-        <Text style={[indexStyles.statLabel, { color: themeColors.text }]} numberOfLines={1}>
-          {label}
-        </Text>
-        <Text
-          style={[
-            indexStyles.statHint,
-            { color: hintColor ?? themeColors.text + '99' },
-          ]}
-          numberOfLines={1}>
-          {hint}
-        </Text>
-      </View>
+      <Text
+        style={[
+          indexStyles.statValue,
+          { color: themeColors.text, fontSize: valueIsText ? 22 : 20 },
+        ]}
+        numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={[indexStyles.statLabel, { color: themeColors.text }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text
+        style={[indexStyles.statHint, { color: hintColor ?? themeColors.text + '99' }]}
+        numberOfLines={1}>
+        {hint}
+      </Text>
     </View>
   );
 };
@@ -489,116 +601,114 @@ const indexStyles = StyleSheet.create({
 
   // Hero
   heroCard: {
-    borderRadius: 20,
-    padding: 18,
-    paddingRight: 20,
-    minHeight: 170,
+    borderRadius: 16,
+    padding: 12,
+    paddingRight: 14,
+    minHeight: 110,
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
   },
   heroIllustration: {
     position: 'absolute',
-    right: 14,
-    top: 18,
-    width: 90,
-    height: 110,
+    right: 10,
+    top: 10,
+    width: 70,
+    height: 84,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bookShadow: {
     position: 'absolute',
-    width: 70,
-    height: 80,
-    borderRadius: 8,
-    transform: [{ translateX: 4 }, { translateY: 6 }],
+    width: 54,
+    height: 62,
+    borderRadius: 6,
+    transform: [{ translateX: 3 }, { translateY: 5 }],
   },
   bookCover: {
-    width: 60,
-    height: 76,
-    borderRadius: 6,
-    borderWidth: 1.2,
+    width: 46,
+    height: 58,
+    borderRadius: 5,
+    borderWidth: 1.1,
     alignItems: 'center',
     justifyContent: 'center',
     transform: [{ rotate: '-8deg' }],
   },
   bookSpine: {
     position: 'absolute',
-    left: 4,
-    top: 4,
-    bottom: 4,
-    width: 4,
-    borderRadius: 2,
+    left: 3,
+    top: 3,
+    bottom: 3,
+    width: 3,
+    borderRadius: 1.5,
   },
   bookStrap: {
     position: 'absolute',
-    right: -3,
-    top: 28,
-    width: 8,
-    height: 18,
-    borderRadius: 2,
+    right: -2,
+    top: 22,
+    width: 6,
+    height: 14,
+    borderRadius: 1.5,
   },
   heroEyebrow: {
     fontFamily: 'RobotoMedium',
-    fontSize: 12,
-    marginLeft: 6,
+    fontSize: 10,
+    marginLeft: 5,
   },
   heroTitle: {
     fontFamily: 'PoppinsBold',
-    fontSize: 20,
-    lineHeight: 26,
-    marginTop: 2,
+    fontSize: 14,
+    lineHeight: 18,
+    marginTop: 1,
   },
   heroSubtitle: {
     fontFamily: 'RobotoRegular',
-    fontSize: 12,
+    fontSize: 10,
     opacity: 0.7,
-    marginTop: 4,
+    marginTop: 2,
   },
   heroButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   heroButtonText: {
-    color: '#fff',
+    color: '#000',
     fontFamily: 'PoppinsBold',
-    fontSize: 13,
+    fontSize: 11,
   },
 
   // Stats
   statCard: {
-    flexDirection: 'row',
+    flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 10,
     borderRadius: 14,
-    minWidth: 168,
     borderWidth: 1,
-    gap: 10,
-  },
-  statIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 2,
   },
   statValue: {
     fontFamily: 'PoppinsBold',
-    lineHeight: 22,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   statLabel: {
     fontFamily: 'RobotoMedium',
-    fontSize: 11,
+    fontSize: 9,
+    opacity: 0.8,
+    textAlign: 'center',
   },
   statHint: {
     fontFamily: 'RobotoRegular',
-    fontSize: 9,
-    marginTop: 1,
+    fontSize: 8,
+    opacity: 0.55,
+    marginTop: 0,
+    textAlign: 'center',
   },
 
   // Daily prompt
@@ -625,29 +735,26 @@ const indexStyles = StyleSheet.create({
     marginTop: -4,
   },
   promptText: {
-    flex: 1,
     fontFamily: 'PoppinsRegular',
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 20,
     fontStyle: 'italic',
   },
-  promptButton: {
+  quoteBlock: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    borderWidth: 1,
+    marginTop: 12,
+    alignItems: 'flex-start',
   },
-  promptButtonText: {
-    fontFamily: 'PoppinsBold',
-    fontSize: 11,
-  },
-  needIdeasText: {
+  quoteAuthor: {
     fontFamily: 'RobotoMedium',
     fontSize: 11,
-    marginLeft: 4,
+    marginTop: 6,
+    opacity: 0.85,
+  },
+  quoteDivider: {
+    height: 1,
+    marginTop: 14,
+    borderRadius: 1,
   },
 
   // Mood selector
@@ -656,10 +763,17 @@ const indexStyles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
   },
+  moodHeader: {
+    marginBottom: 12,
+  },
   moodTitle: {
     fontFamily: 'PoppinsBold',
-    fontSize: 13,
-    marginBottom: 12,
+    fontSize: 11,
+  },
+  moodSubtitle: {
+    fontFamily: 'RobotoRegular',
+    fontSize: 9,
+    marginTop: 2,
   },
   moodRow: {
     flexDirection: 'row',
@@ -671,20 +785,60 @@ const indexStyles = StyleSheet.create({
     flex: 1,
   },
   moodCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0,
-  },
-  moodEmoji: {
-    fontSize: 22,
+    backgroundColor: 'transparent',
   },
   moodLabel: {
     fontFamily: 'RobotoMedium',
+    fontSize: 9,
+    marginTop: 4,
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    padding: 8,
+    borderRadius: 8,
+  },
+  warningText: {
+    fontFamily: 'RobotoMedium',
     fontSize: 10,
-    marginTop: 6,
+    flex: 1,
+  },
+  moodTimeline: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  timelineTitle: {
+    fontFamily: 'RobotoMedium',
+    fontSize: 9,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  timelineTime: {
+    fontFamily: 'RobotoRegular',
+    fontSize: 10,
   },
 
   // Section headers

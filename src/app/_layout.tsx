@@ -31,6 +31,9 @@ import ThemesHeader from '~/components/themesHeader';
 import AccountHeader from '~/components/AccountHeader';
 import SettingsHeader from '~/components/settingsHeader';
 import AboutHeader from '~/components/aboutHeader';
+import AchievementsHeader from '~/components/AchievementsHeader';
+import NotificationsHeader from '~/components/NotificationsHeader';
+import InsightsHeader from '~/components/InsightsHeader';
 import LockScreen from '~/components/LockScreen';
 import SyncManager from '~/components/SyncManager';
 import DailyEntryManager from '~/components/DailyEntryManager';
@@ -163,6 +166,27 @@ export default function Layout() {
                   options={{
                     title: 'Themes',
                     header: () => <ThemesHeader />,
+                  }}
+                />
+                <Stack.Screen
+                  name="Achievements/index"
+                  options={{
+                    title: 'Achievements',
+                    header: () => <AchievementsHeader />,
+                  }}
+                />
+                <Stack.Screen
+                  name="Notifications/index"
+                  options={{
+                    title: 'Notifications',
+                    header: () => <NotificationsHeader />,
+                  }}
+                />
+                <Stack.Screen
+                  name="Insights/index"
+                  options={{
+                    title: 'Insights',
+                    header: () => <InsightsHeader />,
                   }}
                 />
               </Stack>

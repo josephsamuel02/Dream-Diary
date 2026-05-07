@@ -54,8 +54,8 @@ export const THEMES: Record<ThemeKey, ThemeColors> = {
   },
   dark: {
     background: '#000000',
-    text: '#F5F5F5',
-    accent: '#909090',
+    text: '#FFFFFF',
+    accent: '#FFFFFF',
     surface: '#1C1C1C',
     error: '#FF4444',
     headerGradient: ['#000000', '#0D0D0D', '#1C1C1C'],

@@ -10,17 +10,20 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, Entypo } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppDialog } from '~/hooks/useAppDialog';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { replaceBlocksForEntry, removeEntry } from '~/store/slices/diarySlice';
-import type { Mood } from '~/store/slices/diarySlice';
-import { selectThemeColors } from '~/store/slices/themeSlice';
+import type { Mood, MoodEntry } from '~/store/slices/diarySlice';
+import { selectCurrentTheme, selectThemeColors } from '~/store/slices/themeSlice';
+import { selectSettings } from '~/store/slices/settingsSlice';
 import { useToday } from '~/util/useToday';
-import { getMoodMeta } from '~/util/moods';
+import { getMoodMeta, getLatestMoodFromEntry, formatMoodTime } from '~/util/moods';
+import { supabase } from '~/lib/supabase';
+import { deleteRemoteEntry } from '~/util/diarySync';
 
 type Block = { id: string; type: 'text' | 'image' | 'audio'; content: string };
 type Entry = {
@@ -29,6 +32,7 @@ type Entry = {
   blocks: Block[];
   title?: string;
   mood?: Mood;
+  moods?: MoodEntry[];
   tag?: string;
   updatedAt?: string;
   createdAt?: string;
@@ -49,6 +53,9 @@ export default function HistoryItem({
 }) {
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
+  const currentTheme = useAppSelector(selectCurrentTheme);
+  const isDarkTheme = currentTheme === 'dark';
+  const { cloudSyncEnabled } = useAppSelector(selectSettings);
   const { showDialog, dialogElement } = useAppDialog();
 
   // menu states
@@ -68,6 +75,7 @@ export default function HistoryItem({
   const performDelete = useCallback(async () => {
     setBusy(true);
     try {
+      // Delete local media files (images, audio)
       await Promise.all(
         (entry.blocks ?? [])
           .filter((b) => b.type === 'image' || b.type === 'audio')
@@ -81,14 +89,29 @@ export default function HistoryItem({
             }
           })
       );
+
+      // Delete from remote database if sync is enabled
+      if (cloudSyncEnabled) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const userId = session?.user?.id;
+          if (userId) {
+            await deleteRemoteEntry(entry.id, userId);
+          }
+        } catch (e: any) {
+          // Log but don't block local deletion if remote fails
+          console.warn('Failed to delete remote entry:', e?.message);
+        }
+      }
     } catch (e: any) {
       // ignore
     } finally {
+      // Always delete locally
       dispatch(removeEntry(entry.id));
       setBusy(false);
       setMenuOpen(false);
     }
-  }, [dispatch, entry]);
+  }, [dispatch, entry, cloudSyncEnabled]);
 
   // measure the icon position and open the modal popover
   const openOptions = useCallback(() => {
@@ -123,7 +146,10 @@ export default function HistoryItem({
   const hasImage = entry.blocks.some((b) => b.type === 'image');
   const hasAudio = entry.blocks.some((b) => b.type === 'audio');
   const firstImage = entry.blocks.find((b) => b.type === 'image');
-  const moodMeta = getMoodMeta(entry.mood);
+  
+  // Get latest mood (handles both legacy single mood and new moods array)
+  const latestMoodMeta = getLatestMoodFromEntry(entry);
+  const moodCount = entry.moods?.length ?? (entry.mood ? 1 : 0);
 
   // Title is shown above the preview when set; otherwise the first
   // line of the preview doubles as the title.
@@ -199,20 +225,20 @@ export default function HistoryItem({
         <View
           style={[
             styles.dateBadge,
-            { backgroundColor: isToday ? themeColors.accent : themeColors.surface },
-            isToday && { shadowColor: themeColors.accent, shadowOpacity: 0.3 },
+            { backgroundColor: isToday ? (isDarkTheme ? '#FFFFFF' : themeColors.accent) : themeColors.surface },
+            isToday && { shadowColor: isDarkTheme ? '#FFFFFF' : themeColors.accent, shadowOpacity: 0.3 },
           ]}>
-          <Text style={[styles.dayNumber, { color: isToday ? '#fff' : themeColors.text }]}>
+          <Text style={[styles.dayNumber, { color: isToday ? (isDarkTheme ? '#000000' : '#fff') : themeColors.text }]}>
             {day || '—'}
           </Text>
           <Text
             style={[
               styles.monthText,
-              { color: isToday ? 'rgba(255,255,255,0.85)' : themeColors.text + '70' },
+              { color: isToday ? (isDarkTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)') : themeColors.text + '70' },
             ]}>
             {month}
           </Text>
-          {isToday && <View style={styles.todayDot} />}
+          {isToday && <View style={[styles.todayDot, isDarkTheme && { backgroundColor: '#000000' }]} />}
         </View>
 
         {/* Middle: Content */}
@@ -251,10 +277,18 @@ export default function HistoryItem({
           {/* Footer: mood + tag + timestamp */}
           <View style={styles.footerRow}>
             <View style={styles.chip}>
-              {moodMeta ? (
+              {latestMoodMeta ? (
                 <>
-                  <Text style={{ fontSize: 12, marginRight: 3 }}>{moodMeta.emoji}</Text>
-                  <Text style={[styles.chipText, { color: moodMeta.color }]}>{moodMeta.label}</Text>
+                  <Entypo
+                    name={latestMoodMeta.icon as any}
+                    size={12}
+                    color={latestMoodMeta.color}
+                    style={{ marginRight: 3 }}
+                  />
+                  <Text style={[styles.chipText, { color: latestMoodMeta.color }]}>
+                    {latestMoodMeta.label}
+                    {moodCount > 1 && ` +${moodCount - 1}`}
+                  </Text>
                 </>
               ) : (
                 <>

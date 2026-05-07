@@ -30,15 +30,6 @@ const HeaderMenu = ({ visible, onClose }: HeaderMenuProps) => {
 
   const menuItems = [
     {
-      icon: 'color-palette-outline' as const,
-      label: 'Appearance',
-      sublabel: 'Customize colors & background',
-      onPress: () => {
-        onClose();
-        router.push('/Themes');
-      },
-    },
-    {
       icon: 'settings-outline' as const,
       label: 'Settings',
       sublabel: 'App preferences',

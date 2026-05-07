@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAppSelector } from '~/store/hooks';
 import { selectThemeColors } from '~/store/slices/themeSlice';
+import { selectUnreadCount } from '~/store/slices/notificationSlice';
 import HeaderMenu from './HeaderMenu';
 
 const CustomHeader = () => {
@@ -24,6 +25,7 @@ const CustomHeader = () => {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   const themeColors = useAppSelector(selectThemeColors);
+  const unreadCount = useAppSelector(selectUnreadCount);
 
   const [fontsLoaded] = useFonts({
     GreatVibes: GreatVibes_400Regular,
@@ -84,13 +86,16 @@ const CustomHeader = () => {
           {/* Action buttons */}
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
+              onPress={() => router.push('/Notifications')}
               style={[styles.actionButton, { backgroundColor: 'rgba(0,0,0,0.25)' }]}
               activeOpacity={0.7}>
               <Ionicons name="notifications-outline" size={20} color="#fff" />
               {/* Notification badge with count */}
-              <View style={[styles.notificationBadge, { backgroundColor: themeColors.accent }]}>
-                <Text style={styles.notificationBadgeText}>3</Text>
-              </View>
+              {unreadCount > 0 && (
+                <View style={[styles.notificationBadge, { backgroundColor: '#EF4444' }]}>
+                  <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setMenuOpen(true)}

@@ -11,12 +11,22 @@ export type Block = TextBlock | ImageBlock | AudioBlock;
 // render the small mood chip in the entry list.
 export type Mood = 'great' | 'good' | 'okay' | 'notgreat' | 'stressed';
 
+// Each mood entry captures how the user felt at a specific time.
+// A user can log up to 3 moods per day.
+export type MoodEntry = {
+  mood: Mood;
+  timestamp: string; // ISO timestamp when mood was recorded
+};
+
+export const MAX_MOODS_PER_DAY = 3;
+
 export type DiaryEntry = {
   id: string;
   date: string; // local 'YYYY-MM-DD'
   blocks: Block[];
   title?: string;
-  mood?: Mood;
+  mood?: Mood; // DEPRECATED: kept for backwards compatibility, use moods[] instead
+  moods?: MoodEntry[]; // Array of mood entries with timestamps (max 3 per day)
   tag?: string;
   // Timestamps used for sync conflict resolution.
   // createdAt: set once when the entry is first created (local time ISO).
@@ -200,14 +210,56 @@ const DiarySlice = createSlice({
       );
     },
 
-    // Convenience action used by the home-screen mood selector. We
-    // upsert today's entry id outside this reducer (via ensureTodayEntry)
-    // and then dispatch this to set the mood without touching blocks.
+    // DEPRECATED: Use addMoodToEntry instead for the new moods array system.
+    // Kept for backwards compatibility.
     setEntryMood(state, action: PayloadAction<{ entryId: string; mood: Mood }>) {
       ensureEntries(state);
       const { entryId, mood } = action.payload;
       state.entries = state.entries!.map((e) =>
         e.id !== entryId ? e : { ...e, mood, updatedAt: nowIso() }
+      );
+    },
+
+    /**
+     * Add a mood entry with timestamp to a diary entry.
+     * Returns success: false if the entry already has MAX_MOODS_PER_DAY moods.
+     * The UI should check getMoodCount before calling this to show a warning.
+     */
+    addMoodToEntry(state, action: PayloadAction<{ entryId: string; mood: Mood }>) {
+      ensureEntries(state);
+      const { entryId, mood } = action.payload;
+      state.entries = state.entries!.map((e) => {
+        if (e.id !== entryId) return e;
+        
+        const currentMoods = e.moods ?? [];
+        
+        // Enforce max 3 moods per day
+        if (currentMoods.length >= MAX_MOODS_PER_DAY) {
+          return e; // Don't modify if limit reached
+        }
+        
+        const newMoodEntry: MoodEntry = {
+          mood,
+          timestamp: nowIso(),
+        };
+        
+        return {
+          ...e,
+          moods: [...currentMoods, newMoodEntry],
+          mood, // Also set legacy mood field for backwards compatibility
+          updatedAt: nowIso(),
+        };
+      });
+    },
+
+    /**
+     * Clear all moods for an entry (useful for testing or reset).
+     */
+    clearMoodsForEntry(state, action: PayloadAction<{ entryId: string }>) {
+      ensureEntries(state);
+      const { entryId } = action.payload;
+      state.entries = state.entries!.map((e) =>
+        e.id !== entryId ? e : { ...e, moods: [], mood: undefined, updatedAt: nowIso() }
       );
     },
 
@@ -234,6 +286,7 @@ const DiarySlice = createSlice({
           blocks: cloneBlocks(remote.blocks ?? []),
           title: remote.title,
           mood: remote.mood,
+          moods: remote.moods ? [...remote.moods] : undefined,
           tag: remote.tag,
           createdAt: remote.createdAt ?? nowIso(),
           updatedAt: remote.updatedAt ?? nowIso(),
@@ -260,6 +313,8 @@ export const {
   removeBlockFromEntry,
   updateEntryMeta,
   setEntryMood,
+  addMoodToEntry,
+  clearMoodsForEntry,
   mergeRemoteEntries,
   replaceState,
   resetAppState,
@@ -271,5 +326,30 @@ export const selectEntryById = (state: { diary: DiaryState }, id: string) =>
   state.diary.entries?.find((e) => e.id === id) ?? null;
 export const selectEntryByDate = (state: { diary: DiaryState }, date: string) =>
   state.diary.entries?.find((e) => e.date === date) ?? null;
+
+// Get the number of moods logged for an entry
+export const selectMoodCountForEntry = (state: { diary: DiaryState }, entryId: string): number => {
+  const entry = state.diary.entries?.find((e) => e.id === entryId);
+  return entry?.moods?.length ?? 0;
+};
+
+// Check if an entry can accept more moods
+export const selectCanAddMood = (state: { diary: DiaryState }, entryId: string): boolean => {
+  const count = selectMoodCountForEntry(state, entryId);
+  return count < MAX_MOODS_PER_DAY;
+};
+
+// Get the latest mood for an entry (for display in lists)
+export const selectLatestMood = (state: { diary: DiaryState }, entryId: string): MoodEntry | null => {
+  const entry = state.diary.entries?.find((e) => e.id === entryId);
+  if (!entry?.moods?.length) {
+    // Fallback to legacy mood field
+    if (entry?.mood) {
+      return { mood: entry.mood, timestamp: entry.updatedAt ?? '' };
+    }
+    return null;
+  }
+  return entry.moods[entry.moods.length - 1];
+};
 
 export default DiarySlice.reducer;

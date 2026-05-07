@@ -183,7 +183,10 @@ export default function DiaryToolbar({
       </Animated.View>
 
       {/* Main FAB */}
-      <TouchableOpacity onPress={onToggleExpand} activeOpacity={0.9} style={localStyles.fabContainer}>
+      <TouchableOpacity
+        onPress={onToggleExpand}
+        activeOpacity={0.9}
+        style={localStyles.fabContainer}>
         <LinearGradient
           colors={[themeColors.headerGradient[1], themeColors.headerGradient[0]]}
           start={{ x: 0, y: 0 }}
