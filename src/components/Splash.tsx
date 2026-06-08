@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { ThemeKey } from '~/store/slices/themeSlice';
+
+const SPLASH_ICON = require('../../assets/splash_screen_icon.png');
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,6 +20,30 @@ const SPLASH_THEMES: Record<
     iconGradient: [string, string];
   }
 > = {
+  blossom: {
+    gradient: ['#FFE4F0', '#FBCFE8', '#F472B6', '#EC4899'],
+    accent: '#FCE7F3',
+    orbColor: '#F472B6',
+    starColor: '#FFFFFF',
+    icon: 'flower',
+    iconGradient: ['#EC4899', '#DB2777'],
+  },
+  rose: {
+    gradient: ['#FFE4E6', '#FECDD3', '#FB7185', '#E11D48'],
+    accent: '#FFE4E6',
+    orbColor: '#FB7185',
+    starColor: '#FFFFFF',
+    icon: 'rose',
+    iconGradient: ['#E11D48', '#BE123C'],
+  },
+  lilac: {
+    gradient: ['#EDE9FE', '#DDD6FE', '#A78BFA', '#8B5CF6'],
+    accent: '#EDE9FE',
+    orbColor: '#A78BFA',
+    starColor: '#FFFFFF',
+    icon: 'heart',
+    iconGradient: ['#8B5CF6', '#7C3AED'],
+  },
   cozy: {
     gradient: ['#1A0A00', '#4A1A00', '#8B3A00', '#B45309'],
     accent: '#F59E0B',
@@ -26,7 +52,7 @@ const SPLASH_THEMES: Record<
     icon: 'cafe',
     iconGradient: ['#D97706', '#92400E'],
   },
-  clean: {
+  night: {
     gradient: ['#020B2A', '#061B6E', '#1D4ED8', '#3B82F6'],
     accent: '#93C5FD',
     orbColor: '#1D4ED8',
@@ -133,7 +159,6 @@ export default function Splash({ fontsLoaded = false, themeKey = 'cozy' }: Splas
       start={{ x: 0.15, y: 0 }}
       end={{ x: 0.85, y: 1 }}
       style={styles.container}>
-
       {/* Decorative orbs */}
       <View style={[styles.orb1, { backgroundColor: palette.orbColor }]} />
       <View style={[styles.orb2, { backgroundColor: palette.orbColor }]} />
@@ -159,42 +184,51 @@ export default function Splash({ fontsLoaded = false, themeKey = 'cozy' }: Splas
       {/* Main content */}
       <Animated.View
         style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-
         {/* Icon badge */}
         <View style={styles.iconWrap}>
-          <LinearGradient colors={palette.iconGradient} style={[styles.iconGradient, { shadowColor: palette.accent }]}>
-            <Ionicons name={palette.icon} size={36} color="#FFFFFF" />
-          </LinearGradient>
+          <Image source={SPLASH_ICON} style={styles.splashIcon} resizeMode="contain" />
           <View style={[styles.iconGlow, { backgroundColor: palette.accent }]} />
         </View>
 
         {/* Title */}
-        <Text
-          style={[
-            styles.title,
-            fontsLoaded ? styles.titleFontLoaded : styles.titleFallback,
-          ]}>
+        <Text style={[styles.title, fontsLoaded ? styles.titleFontLoaded : styles.titleFallback]}>
           Dream Diary
         </Text>
 
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={[styles.dividerLine, { backgroundColor: palette.accent }]} />
-          <Ionicons name="sparkles" size={12} color={palette.accent} style={{ marginHorizontal: 8 }} />
+          <Ionicons
+            name="sparkles"
+            size={12}
+            color={palette.accent}
+            style={{ marginHorizontal: 8 }}
+          />
           <View style={[styles.dividerLine, { backgroundColor: palette.accent }]} />
         </View>
 
         {/* Tagline */}
-        <Text style={[styles.tagline, { color: palette.accent }, fontsLoaded && styles.taglineFontLoaded]}>
+        <Text
+          style={[
+            styles.tagline,
+            { color: palette.accent },
+            fontsLoaded && styles.taglineFontLoaded,
+          ]}>
           Capture your dreams &amp; thoughts
         </Text>
       </Animated.View>
 
       {/* Loading dots */}
       <View style={styles.dotsRow}>
-        <Animated.View style={[styles.dot, { backgroundColor: palette.accent, opacity: dotAnim1 }]} />
-        <Animated.View style={[styles.dot, { backgroundColor: palette.accent, opacity: dotAnim2 }]} />
-        <Animated.View style={[styles.dot, { backgroundColor: palette.accent, opacity: dotAnim3 }]} />
+        <Animated.View
+          style={[styles.dot, { backgroundColor: palette.accent, opacity: dotAnim1 }]}
+        />
+        <Animated.View
+          style={[styles.dot, { backgroundColor: palette.accent, opacity: dotAnim2 }]}
+        />
+        <Animated.View
+          style={[styles.dot, { backgroundColor: palette.accent, opacity: dotAnim3 }]}
+        />
       </View>
     </LinearGradient>
   );
@@ -248,16 +282,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconGradient: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.55,
-    shadowRadius: 20,
-    elevation: 14,
+  splashIcon: {
+    width: 110,
+    height: 110,
   },
   iconGlow: {
     position: 'absolute',

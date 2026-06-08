@@ -40,6 +40,9 @@ import {
 } from '~/store/slices/settingsSlice';
 
 const THEME_OPTIONS: { key: ThemeKey; name: string; emoji: string }[] = [
+  { key: 'blossom', name: 'Blossom', emoji: '🌸' },
+  { key: 'rose', name: 'Rose', emoji: '🌹' },
+  { key: 'lilac', name: 'Lilac', emoji: '💜' },
   { key: 'cozy', name: 'Cozy', emoji: '🍂' },
   { key: 'night', name: 'Night', emoji: '🌃' },
   { key: 'dreamy', name: 'Dreamy', emoji: '🌙' },

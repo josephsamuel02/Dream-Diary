@@ -220,7 +220,7 @@ export default function DiaryInput() {
   // Animated height for expanded selector
   const expandedHeight = expandAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 70],
+    outputRange: [0, 56],
   });
 
   if (!entryId) {
@@ -257,16 +257,10 @@ export default function DiaryInput() {
                       onPress={() => handleSelectMood(m.key)}
                       style={styles.moodItem}
                       activeOpacity={0.7}>
-                      <View
-                        style={[
-                          styles.moodCircle,
-                          { borderColor: themeColors.accent + '30' },
-                        ]}>
+                      <View style={[styles.moodCircle, { borderColor: themeColors.accent + '30' }]}>
                         <Entypo name={m.icon as any} size={20} color={m.color} />
                       </View>
-                      <Text style={[styles.moodLabel, { color: themeColors.text }]}>
-                        {m.label}
-                      </Text>
+                      <Text style={[styles.moodLabel, { color: themeColors.text }]}>{m.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -291,7 +285,8 @@ export default function DiaryInput() {
                         style={[
                           styles.currentMoodChip,
                           { backgroundColor: themeColors.surface },
-                          isLast && isExpanded && { borderColor: themeColors.accent, borderWidth: 1 },
+                          isLast &&
+                            isExpanded && { borderColor: themeColors.accent, borderWidth: 1 },
                         ]}>
                         <Entypo
                           name={meta?.icon as any}
@@ -299,7 +294,11 @@ export default function DiaryInput() {
                           color={meta?.color ?? themeColors.text}
                         />
                         <View style={styles.moodChipText}>
-                          <Text style={[styles.moodChipLabel, { color: meta?.color ?? themeColors.text }]}>
+                          <Text
+                            style={[
+                              styles.moodChipLabel,
+                              { color: meta?.color ?? themeColors.text },
+                            ]}>
                             {meta?.label}
                           </Text>
                           <Text style={[styles.moodChipTime, { color: themeColors.text + '60' }]}>
@@ -326,12 +325,13 @@ export default function DiaryInput() {
                   {isMoodLocked
                     ? `Change mood in ${remainingMinutes} min`
                     : canAddMood
-                    ? 'Tap to change mood'
-                    : 'Daily limit reached'}
+                      ? 'Tap to change mood'
+                      : 'Daily limit reached'}
                 </Text>
 
                 {/* Expandable mood selector */}
-                <Animated.View style={[styles.expandedSelector, { height: expandedHeight, overflow: 'hidden' }]}>
+                <Animated.View
+                  style={[styles.expandedSelector, { height: expandedHeight, overflow: 'hidden' }]}>
                   <View style={styles.moodRow}>
                     {MOODS.map((m) => (
                       <TouchableOpacity
@@ -340,10 +340,7 @@ export default function DiaryInput() {
                         style={styles.moodItem}
                         activeOpacity={0.7}>
                         <View
-                          style={[
-                            styles.moodCircle,
-                            { borderColor: themeColors.accent + '30' },
-                          ]}>
+                          style={[styles.moodCircle, { borderColor: themeColors.accent + '30' }]}>
                           <Entypo name={m.icon as any} size={20} color={m.color} />
                         </View>
                         <Text style={[styles.moodLabel, { color: themeColors.text }]}>
@@ -421,28 +418,29 @@ const styles = StyleSheet.create({
   // Mood section
   moodSection: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
     borderBottomWidth: 1,
   },
   moodPrompt: {
     fontFamily: 'PoppinsBold',
-    fontSize: 13,
-    marginBottom: 10,
+    fontSize: 12,
+    marginBottom: 4,
   },
   moodRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingTop: 8,
+    paddingTop: 2,
   },
   moodItem: {
     alignItems: 'center',
     flex: 1,
   },
   moodCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -450,50 +448,51 @@ const styles = StyleSheet.create({
   },
   moodLabel: {
     fontFamily: 'RobotoMedium',
-    fontSize: 9,
-    marginTop: 4,
+    fontSize: 8,
+    marginTop: 2,
     textAlign: 'center',
   },
   // Current mood display
   currentMoodsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   currentMoodChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
   },
   moodChipText: {
-    gap: 1,
+    gap: 0,
   },
   moodChipLabel: {
     fontFamily: 'RobotoMedium',
-    fontSize: 12,
+    fontSize: 11,
   },
   moodChipTime: {
     fontFamily: 'RobotoRegular',
-    fontSize: 10,
+    fontSize: 9,
   },
   statusText: {
     fontFamily: 'RobotoRegular',
-    fontSize: 10,
-    marginTop: 8,
+    fontSize: 9,
+    marginTop: 4,
   },
   expandedSelector: {
-    marginTop: 8,
+    marginTop: 4,
   },
   // Warning banner
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 10,
-    padding: 8,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   warningText: {

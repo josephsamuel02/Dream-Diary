@@ -1,6 +1,15 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type ThemeKey = 'cozy' | 'night' | 'dreamy' | 'nature' | 'warm' | 'dark';
+export type ThemeKey =
+  | 'blossom'
+  | 'rose'
+  | 'lilac'
+  | 'cozy'
+  | 'night'
+  | 'dreamy'
+  | 'nature'
+  | 'warm'
+  | 'dark';
 
 export interface ThemeColors {
   background: string;
@@ -12,6 +21,30 @@ export interface ThemeColors {
 }
 
 export const THEMES: Record<ThemeKey, ThemeColors> = {
+  blossom: {
+    background: '#FFF0F6',
+    text: '#5C2A3A',
+    accent: '#EC4899',
+    surface: '#FCE7F3',
+    error: '#F87171',
+    headerGradient: ['#FBCFE8', '#F9A8D4', '#F472B6'],
+  },
+  rose: {
+    background: '#FFF1F2',
+    text: '#6B2737',
+    accent: '#E11D48',
+    surface: '#FFE4E6',
+    error: '#F87171',
+    headerGradient: ['#FECDD3', '#FDA4AF', '#FB7185'],
+  },
+  lilac: {
+    background: '#F5F3FF',
+    text: '#4C1D95',
+    accent: '#8B5CF6',
+    surface: '#EDE9FE',
+    error: '#F87171',
+    headerGradient: ['#DDD6FE', '#C4B5FD', '#A78BFA'],
+  },
   cozy: {
     background: '#2C1810',
     text: '#F5E6D3',
@@ -100,6 +133,7 @@ export const { setTheme, setBackgroundImage, setBackgroundOpacity, clearBackgrou
 export const selectCurrentTheme = (state: { theme: ThemeState }) => state.theme.currentTheme;
 export const selectThemeColors = (state: { theme: ThemeState }) => THEMES[state.theme.currentTheme];
 export const selectBackgroundImage = (state: { theme: ThemeState }) => state.theme.backgroundImage;
-export const selectBackgroundOpacity = (state: { theme: ThemeState }) => state.theme.backgroundOpacity;
+export const selectBackgroundOpacity = (state: { theme: ThemeState }) =>
+  state.theme.backgroundOpacity;
 
 export default themeSlice.reducer;
