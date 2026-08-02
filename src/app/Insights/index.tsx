@@ -10,6 +10,7 @@ import { useAppSelector } from '~/store/hooks';
 import { selectThemeColors } from '~/store/slices/themeSlice';
 import { selectEntries } from '~/store/slices/diarySlice';
 import { moodScore, MOODS } from '~/util/moods';
+import AdBanner from '~/components/AdBanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRAPH_HEIGHT = 200;
@@ -181,6 +182,9 @@ const InsightsScreen = () => {
               : "Start writing in your diary to see your mood trends here."}
           </Text>
         </View>
+
+        {/* Keep ads away from diary writing and mood-entry interactions. */}
+        <AdBanner />
       </ScrollView>
     </View>
   );

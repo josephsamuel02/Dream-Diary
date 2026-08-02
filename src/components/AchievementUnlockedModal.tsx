@@ -18,8 +18,14 @@ import { selectThemeColors } from '~/store/slices/themeSlice';
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 const CONFETTI_COLORS = [
-  '#FFD700', '#FF6B6B', '#6BCB77', '#4D96FF',
-  '#FF6FD8', '#FFA552', '#A78BFA', '#34D399',
+  '#FFD700',
+  '#FF6B6B',
+  '#6BCB77',
+  '#4D96FF',
+  '#FF6FD8',
+  '#FFA552',
+  '#A78BFA',
+  '#34D399',
 ];
 const CONFETTI_COUNT = 28;
 
@@ -57,7 +63,7 @@ const AchievementUnlockedModal: React.FC<Props> = ({ badge, visible, onClose }) 
       size: 6 + Math.random() * 8,
       shape: Math.random() > 0.5 ? 'circle' : 'square',
     }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -102,7 +108,10 @@ const AchievementUnlockedModal: React.FC<Props> = ({ badge, visible, onClose }) 
     confetti.forEach((piece, i) => {
       const delay = i * 60;
       const duration = 1800 + Math.random() * 800;
-      const endX = (Math.random() - 0.5) * 120;
+      const startX = Math.random() * SCREEN_W;
+      const driftX = (Math.random() - 0.5) * 120;
+
+      piece.x.setValue(startX);
 
       Animated.sequence([
         Animated.delay(delay),
@@ -113,7 +122,7 @@ const AchievementUnlockedModal: React.FC<Props> = ({ badge, visible, onClose }) 
             useNativeDriver: true,
           }),
           Animated.timing(piece.x, {
-            toValue: piece.x._value + endX,
+            toValue: startX + driftX,
             duration,
             useNativeDriver: true,
           }),
@@ -165,11 +174,7 @@ const AchievementUnlockedModal: React.FC<Props> = ({ badge, visible, onClose }) 
                 height: piece.size,
                 borderRadius: piece.shape === 'circle' ? piece.size / 2 : 2,
                 backgroundColor: piece.color,
-                transform: [
-                  { translateX: piece.x },
-                  { translateY: piece.y },
-                  { rotate },
-                ],
+                transform: [{ translateX: piece.x }, { translateY: piece.y }, { rotate }],
                 opacity: piece.opacity,
               }}
             />
@@ -194,8 +199,7 @@ const AchievementUnlockedModal: React.FC<Props> = ({ badge, visible, onClose }) 
             <View style={styles.bannerDecorCircle} />
             <View style={styles.bannerDecorCircle2} />
 
-            <Animated.Text
-              style={[styles.badgeEmoji, { transform: [{ translateY: bounceAnim }] }]}>
+            <Animated.Text style={[styles.badgeEmoji, { transform: [{ translateY: bounceAnim }] }]}>
               {badge.icon}
             </Animated.Text>
           </LinearGradient>
@@ -212,10 +216,7 @@ const AchievementUnlockedModal: React.FC<Props> = ({ badge, visible, onClose }) 
             <Text style={[styles.badgeTitle, { color: themeColors.text }]}>{badge.title}</Text>
             <Text style={[styles.badgeDesc, { color: themeColors.text }]}>{badge.description}</Text>
 
-            <TouchableOpacity
-              onPress={onClose}
-              activeOpacity={0.85}
-              style={{ marginTop: 20 }}>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.85} style={{ marginTop: 20 }}>
               <LinearGradient
                 colors={badge.gradientColors}
                 start={{ x: 0, y: 0 }}

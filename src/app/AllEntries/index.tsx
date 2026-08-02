@@ -14,6 +14,7 @@ import { useAppSelector } from '~/store/hooks';
 import { selectEntries } from '~/store/slices/diarySlice';
 import { selectThemeColors, selectBackgroundImage, selectBackgroundOpacity } from '~/store/slices/themeSlice';
 import HistoryItem from '~/components/historyItem';
+import AdBanner from '~/components/AdBanner';
 
 export default function AllEntries() {
   const router = useRouter();
@@ -132,6 +133,9 @@ export default function AllEntries() {
           {sortOrder === 'newest' ? 'Newest first' : 'Oldest first'}
         </Text>
       </View>
+
+      {/* Non-intrusive placement while users browse saved entries. */}
+      <AdBanner />
 
       {/* Entries List */}
       <FlatList

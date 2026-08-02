@@ -38,6 +38,7 @@ import {
   DIARY_FONT_SIZE_MAX,
   DIARY_FONT_SIZE_DEFAULT,
 } from '~/store/slices/settingsSlice';
+import { showRewardedBackgroundAd, showRewardedThemeAd } from '~/util/ads';
 
 const THEME_OPTIONS: { key: ThemeKey; name: string; emoji: string }[] = [
   { key: 'blossom', name: 'Blossom', emoji: '🌸' },
@@ -131,12 +132,32 @@ export default function ThemesScreen() {
 
   const isDarkTheme = currentTheme === 'dark';
 
-  const handleThemeSelect = (themeKey: ThemeKey) => {
+  const handleThemeSelect = async (themeKey: ThemeKey) => {
+    const confirmed = await showRewardedThemeAd().catch(() => false);
+    if (!confirmed) {
+      showDialog({
+        title: 'Theme unlock unavailable',
+        message: 'Please try the rewarded ad again to unlock a theme change.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
+      return;
+    }
+
     dispatch(setTheme(themeKey));
   };
 
   const handlePickImage = async () => {
     try {
+      const rewarded = await showRewardedBackgroundAd().catch(() => false);
+      if (!rewarded) {
+        showDialog({
+          title: 'Reward needed',
+          message: 'Watch the rewarded ad to unlock a new background image.',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
+        return;
+      }
+
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         showDialog({
@@ -209,376 +230,524 @@ export default function ThemesScreen() {
 
   return (
     <>
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: isDarkTheme ? '#FFFFFF' : colors.text }]}>Themes</Text>
-        <Text style={[styles.subtitle, { color: isDarkTheme ? '#FFFFFF' : colors.text, opacity: 0.6 }]}>
-          Customize your diary's look and feel
-        </Text>
-      </View>
-
-      {/* Theme Colors Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="color-palette-outline" size={20} color={colors.accent} />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Color Themes</Text>
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: isDarkTheme ? '#FFFFFF' : colors.text }]}>
+            Themes
+          </Text>
+          <Text
+            style={[
+              styles.subtitle,
+              { color: isDarkTheme ? '#FFFFFF' : colors.text, opacity: 0.6 },
+            ]}>
+            Customize your diary&apos;s look and feel
+          </Text>
         </View>
 
-        <View style={styles.themesGrid}>
-          {THEME_OPTIONS.map((theme) => {
-            const themeColors = THEMES[theme.key];
-            const isSelected = currentTheme === theme.key;
-            const isItemDark = theme.key === 'dark';
-
-            return (
-              <TouchableOpacity
-                key={theme.key}
-                style={[
-                  styles.themeCard,
-                  { backgroundColor: isItemDark ? '#FFFFFF' : themeColors.surface },
-                  isSelected && {
-                    borderColor: isItemDark ? '#000000' : themeColors.accent,
-                    borderWidth: 2,
-                    shadowColor: isItemDark ? '#FFFFFF' : themeColors.accent,
-                    shadowOpacity: 0.35,
-                  },
-                ]}
-                onPress={() => handleThemeSelect(theme.key)}
-                activeOpacity={0.8}>
-                {/* Gradient preview strip */}
-                <LinearGradient
-                  colors={themeColors.headerGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.themePreview}>
-                  <Text style={styles.themeEmoji}>{theme.emoji}</Text>
-                </LinearGradient>
-
-                {/* Color dots */}
-                <View style={styles.colorDots}>
-                  <View style={[styles.colorDot, { backgroundColor: themeColors.background }]} />
-                  <View style={[styles.colorDot, { backgroundColor: themeColors.accent }]} />
-                  <View style={[styles.colorDot, { backgroundColor: isItemDark ? '#000000' : themeColors.text }]} />
-                </View>
-
-                <Text style={[styles.themeName, { color: isItemDark ? '#000000' : themeColors.text }]}>{theme.name}</Text>
-
-                {isSelected && (
-                  <View style={[styles.selectedBadge, { backgroundColor: isItemDark ? '#000000' : themeColors.accent }]}>
-                    <Ionicons name="checkmark" size={11} color={isItemDark ? '#FFFFFF' : "#fff"} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Font Selection Section */}
-      <View style={[styles.section, { marginTop: 36 }]}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="text-outline" size={20} color={colors.accent} />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Diary Font</Text>
-        </View>
-        <Text style={[styles.fontSectionSubtitle, { color: colors.text }]}>
-          Applied to your diary writing area only
-        </Text>
-
-        {/* Dropdown trigger */}
-        <TouchableOpacity
-          onPress={() => setFontDropdownOpen(true)}
-          activeOpacity={0.8}
-          style={[
-            styles.dropdownTrigger,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.accent + '40',
-            },
-          ]}>
-          <View style={styles.dropdownTriggerLeft}>
-            <Text
-              style={[
-                styles.dropdownFontName,
-                { color: colors.text, fontFamily: selectedFontOption.key },
-              ]}>
-              {selectedFontOption.label}
-            </Text>
-            <Text
-              style={[
-                styles.dropdownSample,
-                { color: colors.text, fontFamily: selectedFontOption.key },
-              ]}>
-              {selectedFontOption.sample}
-            </Text>
-          </View>
-          <View style={[styles.dropdownChevronWrap, { backgroundColor: colors.accent + '18' }]}>
-            <Ionicons name="chevron-down" size={16} color={colors.accent} />
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Font Size Section */}
-      <View style={[styles.section, { marginTop: 28 }]}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="resize-outline" size={20} color={colors.accent} />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Font Size</Text>
-        </View>
-        <Text style={[styles.fontSectionSubtitle, { color: colors.text }]}>
-          Adjust the text size used inside your diary entries
-        </Text>
-
-        <View
-          style={[
-            styles.fontSizeCard,
-            { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.surface, borderColor: isDarkTheme ? '#00000020' : colors.accent + '30' },
-          ]}>
-          <View style={styles.fontSizeHeader}>
-            <Text style={[styles.fontSizeLabel, { color: isDarkTheme ? '#000000' : colors.text }]}>Size</Text>
-            <Text style={[styles.fontSizeValue, { color: isDarkTheme ? '#000000' : colors.accent }]}>{currentFontSize}pt</Text>
+        {/* Theme Colors Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="color-palette-outline" size={20} color={colors.accent} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Color Themes</Text>
           </View>
 
-          <Slider
-            style={styles.slider}
-            minimumValue={DIARY_FONT_SIZE_MIN}
-            maximumValue={DIARY_FONT_SIZE_MAX}
-            step={1}
-            value={currentFontSize}
-            onValueChange={(v) => dispatch(setDiaryFontSize(Math.round(v)))}
-            minimumTrackTintColor={isDarkTheme ? '#000000' : colors.accent}
-            maximumTrackTintColor={isDarkTheme ? '#00000030' : colors.text + '30'}
-            thumbTintColor={isDarkTheme ? '#000000' : colors.accent}
-          />
-          <View style={styles.fontSizeHints}>
-            <Text style={[styles.fontSizeHint, { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.45 }]}>A</Text>
-            <Text
-              style={[styles.fontSizeHint, { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.45, fontSize: 18 }]}>
-              A
-            </Text>
-          </View>
+          <View style={styles.themesGrid}>
+            {THEME_OPTIONS.map((theme) => {
+              const themeColors = THEMES[theme.key];
+              const isSelected = currentTheme === theme.key;
+              const isItemDark = theme.key === 'dark';
 
-          {/* Live sample so users can see the effect immediately */}
-          <View
-            style={[styles.fontSizeSampleBox, { borderTopColor: isDarkTheme ? '#00000012' : colors.text + '12' }]}
-            pointerEvents="none">
-            <Text
-              style={[
-                styles.fontSizeSample,
-                {
-                  color: isDarkTheme ? '#000000' : colors.text,
-                  fontFamily: currentFont,
-                  fontSize: currentFontSize,
-                  lineHeight: Math.round(currentFontSize * 1.55),
-                },
-              ]}
-              numberOfLines={2}>
-              The quick brown fox jumps over the lazy dog.
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Font dropdown modal */}
-      <Modal
-        visible={fontDropdownOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setFontDropdownOpen(false)}>
-        <Pressable style={styles.dropdownOverlay} onPress={() => setFontDropdownOpen(false)} />
-        <View
-          style={[
-            styles.dropdownSheet,
-            { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.surface },
-          ]}>
-          {/* Sheet handle */}
-          <View style={[styles.dropdownHandle, { backgroundColor: isDarkTheme ? '#000000' : colors.text + '25' }]} />
-
-          {/* Sheet header */}
-          <View style={[styles.dropdownSheetHeader, { borderBottomColor: isDarkTheme ? '#00000020' : colors.text + '12' }]}>
-            <Text style={[styles.dropdownSheetTitle, { color: isDarkTheme ? '#000000' : colors.text }]}>Choose a Font</Text>
-            <TouchableOpacity
-              onPress={() => setFontDropdownOpen(false)}
-              style={[styles.dropdownCloseBtn, { backgroundColor: isDarkTheme ? '#00000012' : colors.text + '12' }]}>
-              <Ionicons name="close" size={16} color={isDarkTheme ? '#000000' : colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Font options */}
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.dropdownScroll}>
-            {FONT_OPTIONS.map((font) => {
-              const isSelected = currentFont === font.key;
               return (
                 <TouchableOpacity
-                  key={font.key}
-                  onPress={() => {
-                    dispatch(setDiaryFont(font.key));
-                    setFontDropdownOpen(false);
-                  }}
-                  activeOpacity={0.7}
+                  key={theme.key}
                   style={[
-                    styles.dropdownItem,
-                    { borderBottomColor: isDarkTheme ? '#00000008' : colors.text + '08' },
-                    isSelected && { backgroundColor: isDarkTheme ? '#00000012' : colors.accent + '12' },
-                  ]}>
-                  <View style={styles.dropdownItemLeft}>
-                    <Text
-                      style={[
-                        styles.dropdownItemName,
-                        { color: isDarkTheme ? '#000000' : colors.text, fontFamily: font.key },
-                      ]}>
-                      {font.label}
-                    </Text>
-                    <Text style={[styles.dropdownItemDesc, { color: isDarkTheme ? '#000000' : colors.text }]}>
-                      {font.description}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.dropdownItemSample,
-                        { color: isDarkTheme ? '#000000' : colors.text, fontFamily: font.key },
-                      ]}
-                      numberOfLines={1}>
-                      {font.sample}
-                    </Text>
-                  </View>
-                  {isSelected ? (
-                    <View style={[styles.dropdownItemCheck, { backgroundColor: isDarkTheme ? '#000000' : colors.accent }]}>
-                      <Ionicons name="checkmark" size={14} color={isDarkTheme ? '#FFFFFF' : "#fff"} />
-                    </View>
-                  ) : (
+                    styles.themeCard,
+                    { backgroundColor: isItemDark ? '#FFFFFF' : themeColors.surface },
+                    isSelected && {
+                      borderColor: isItemDark ? '#000000' : themeColors.accent,
+                      borderWidth: 2,
+                      shadowColor: isItemDark ? '#FFFFFF' : themeColors.accent,
+                      shadowOpacity: 0.35,
+                    },
+                  ]}
+                  onPress={() => void handleThemeSelect(theme.key)}
+                  activeOpacity={0.8}>
+                  {/* Gradient preview strip */}
+                  <LinearGradient
+                    colors={themeColors.headerGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.themePreview}>
+                    <Text style={styles.themeEmoji}>{theme.emoji}</Text>
+                  </LinearGradient>
+
+                  {/* Color dots */}
+                  <View style={styles.colorDots}>
+                    <View style={[styles.colorDot, { backgroundColor: themeColors.background }]} />
+                    <View style={[styles.colorDot, { backgroundColor: themeColors.accent }]} />
                     <View
-                      style={[styles.dropdownItemCircle, { borderColor: isDarkTheme ? '#00000025' : colors.text + '25' }]}
+                      style={[
+                        styles.colorDot,
+                        { backgroundColor: isItemDark ? '#000000' : themeColors.text },
+                      ]}
                     />
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.themeName,
+                      { color: isItemDark ? '#000000' : themeColors.text },
+                    ]}>
+                    {theme.name}
+                  </Text>
+
+                  {isSelected && (
+                    <View
+                      style={[
+                        styles.selectedBadge,
+                        { backgroundColor: isItemDark ? '#000000' : themeColors.accent },
+                      ]}>
+                      <Ionicons
+                        name="checkmark"
+                        size={11}
+                        color={isItemDark ? '#FFFFFF' : '#fff'}
+                      />
+                    </View>
                   )}
                 </TouchableOpacity>
               );
             })}
-            <View style={{ height: 24 }} />
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* Background Image Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="image-outline" size={20} color={colors.accent} />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Background Image</Text>
+          </View>
         </View>
 
-        <View style={[styles.bgCard, { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.surface }]}>
-          {backgroundImage ? (
-            <View style={styles.bgPreviewContainer}>
+        {/* Font Selection Section */}
+        <View style={[styles.section, { marginTop: 36 }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="text-outline" size={20} color={colors.accent} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Diary Font</Text>
+          </View>
+          <Text style={[styles.fontSectionSubtitle, { color: colors.text }]}>
+            Applied to your diary writing area only
+          </Text>
+
+          {/* Dropdown trigger */}
+          <TouchableOpacity
+            onPress={() => setFontDropdownOpen(true)}
+            activeOpacity={0.8}
+            style={[
+              styles.dropdownTrigger,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.accent + '40',
+              },
+            ]}>
+            <View style={styles.dropdownTriggerLeft}>
+              <Text
+                style={[
+                  styles.dropdownFontName,
+                  { color: colors.text, fontFamily: selectedFontOption.key },
+                ]}>
+                {selectedFontOption.label}
+              </Text>
+              <Text
+                style={[
+                  styles.dropdownSample,
+                  { color: colors.text, fontFamily: selectedFontOption.key },
+                ]}>
+                {selectedFontOption.sample}
+              </Text>
+            </View>
+            <View style={[styles.dropdownChevronWrap, { backgroundColor: colors.accent + '18' }]}>
+              <Ionicons name="chevron-down" size={16} color={colors.accent} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Font Size Section */}
+        <View style={[styles.section, { marginTop: 28 }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="resize-outline" size={20} color={colors.accent} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Font Size</Text>
+          </View>
+          <Text style={[styles.fontSectionSubtitle, { color: colors.text }]}>
+            Adjust the text size used inside your diary entries
+          </Text>
+
+          <View
+            style={[
+              styles.fontSizeCard,
+              {
+                backgroundColor: isDarkTheme ? '#FFFFFF' : colors.surface,
+                borderColor: isDarkTheme ? '#00000020' : colors.accent + '30',
+              },
+            ]}>
+            <View style={styles.fontSizeHeader}>
+              <Text
+                style={[styles.fontSizeLabel, { color: isDarkTheme ? '#000000' : colors.text }]}>
+                Size
+              </Text>
+              <Text
+                style={[styles.fontSizeValue, { color: isDarkTheme ? '#000000' : colors.accent }]}>
+                {currentFontSize}pt
+              </Text>
+            </View>
+
+            <Slider
+              style={styles.slider}
+              minimumValue={DIARY_FONT_SIZE_MIN}
+              maximumValue={DIARY_FONT_SIZE_MAX}
+              step={1}
+              value={currentFontSize}
+              onValueChange={(v) => dispatch(setDiaryFontSize(Math.round(v)))}
+              minimumTrackTintColor={isDarkTheme ? '#000000' : colors.accent}
+              maximumTrackTintColor={isDarkTheme ? '#00000030' : colors.text + '30'}
+              thumbTintColor={isDarkTheme ? '#000000' : colors.accent}
+            />
+            <View style={styles.fontSizeHints}>
+              <Text
+                style={[
+                  styles.fontSizeHint,
+                  { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.45 },
+                ]}>
+                A
+              </Text>
+              <Text
+                style={[
+                  styles.fontSizeHint,
+                  { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.45, fontSize: 18 },
+                ]}>
+                A
+              </Text>
+            </View>
+
+            {/* Live sample so users can see the effect immediately */}
+            <View
+              style={[
+                styles.fontSizeSampleBox,
+                { borderTopColor: isDarkTheme ? '#00000012' : colors.text + '12' },
+              ]}
+              pointerEvents="none">
+              <Text
+                style={[
+                  styles.fontSizeSample,
+                  {
+                    color: isDarkTheme ? '#000000' : colors.text,
+                    fontFamily: currentFont,
+                    fontSize: currentFontSize,
+                    lineHeight: Math.round(currentFontSize * 1.55),
+                  },
+                ]}
+                numberOfLines={2}>
+                The quick brown fox jumps over the lazy dog.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Font dropdown modal */}
+        <Modal
+          visible={fontDropdownOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setFontDropdownOpen(false)}>
+          <Pressable style={styles.dropdownOverlay} onPress={() => setFontDropdownOpen(false)} />
+          <View
+            style={[
+              styles.dropdownSheet,
+              { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.surface },
+            ]}>
+            {/* Sheet handle */}
+            <View
+              style={[
+                styles.dropdownHandle,
+                { backgroundColor: isDarkTheme ? '#000000' : colors.text + '25' },
+              ]}
+            />
+
+            {/* Sheet header */}
+            <View
+              style={[
+                styles.dropdownSheetHeader,
+                { borderBottomColor: isDarkTheme ? '#00000020' : colors.text + '12' },
+              ]}>
+              <Text
+                style={[
+                  styles.dropdownSheetTitle,
+                  { color: isDarkTheme ? '#000000' : colors.text },
+                ]}>
+                Choose a Font
+              </Text>
+              <TouchableOpacity
+                onPress={() => setFontDropdownOpen(false)}
+                style={[
+                  styles.dropdownCloseBtn,
+                  { backgroundColor: isDarkTheme ? '#00000012' : colors.text + '12' },
+                ]}>
+                <Ionicons name="close" size={16} color={isDarkTheme ? '#000000' : colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Font options */}
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.dropdownScroll}>
+              {FONT_OPTIONS.map((font) => {
+                const isSelected = currentFont === font.key;
+                return (
+                  <TouchableOpacity
+                    key={font.key}
+                    onPress={() => {
+                      dispatch(setDiaryFont(font.key));
+                      setFontDropdownOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.dropdownItem,
+                      { borderBottomColor: isDarkTheme ? '#00000008' : colors.text + '08' },
+                      isSelected && {
+                        backgroundColor: isDarkTheme ? '#00000012' : colors.accent + '12',
+                      },
+                    ]}>
+                    <View style={styles.dropdownItemLeft}>
+                      <Text
+                        style={[
+                          styles.dropdownItemName,
+                          { color: isDarkTheme ? '#000000' : colors.text, fontFamily: font.key },
+                        ]}>
+                        {font.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dropdownItemDesc,
+                          { color: isDarkTheme ? '#000000' : colors.text },
+                        ]}>
+                        {font.description}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dropdownItemSample,
+                          { color: isDarkTheme ? '#000000' : colors.text, fontFamily: font.key },
+                        ]}
+                        numberOfLines={1}>
+                        {font.sample}
+                      </Text>
+                    </View>
+                    {isSelected ? (
+                      <View
+                        style={[
+                          styles.dropdownItemCheck,
+                          { backgroundColor: isDarkTheme ? '#000000' : colors.accent },
+                        ]}>
+                        <Ionicons
+                          name="checkmark"
+                          size={14}
+                          color={isDarkTheme ? '#FFFFFF' : '#fff'}
+                        />
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.dropdownItemCircle,
+                          { borderColor: isDarkTheme ? '#00000025' : colors.text + '25' },
+                        ]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={{ height: 24 }} />
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Background Image Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="image-outline" size={20} color={colors.accent} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Background Image</Text>
+          </View>
+
+          <View
+            style={[styles.bgCard, { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.surface }]}>
+            {backgroundImage ? (
+              <View style={styles.bgPreviewContainer}>
+                <Image
+                  source={{ uri: backgroundImage }}
+                  style={styles.bgPreview}
+                  resizeMode="cover"
+                />
+                <View style={styles.bgOverlay} />
+                <View style={styles.bgActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.bgActionBtn,
+                      { backgroundColor: isDarkTheme ? '#000000' : colors.accent },
+                    ]}
+                    onPress={handlePickImage}>
+                    <Ionicons name="refresh" size={18} color="#fff" />
+                    <Text style={styles.bgActionText}>Change</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.bgActionBtn, { backgroundColor: '#EF4444' }]}
+                    onPress={handleRemoveBackground}>
+                    <Ionicons name="trash" size={18} color="#fff" />
+                    <Text style={styles.bgActionText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.bgPlaceholder}
+                onPress={handlePickImage}
+                activeOpacity={0.7}>
+                <View
+                  style={[
+                    styles.bgIconCircle,
+                    { backgroundColor: isDarkTheme ? '#00000018' : colors.accent + '20' },
+                  ]}>
+                  <Ionicons
+                    name="add-outline"
+                    size={32}
+                    color={isDarkTheme ? '#000000' : colors.accent}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.bgPlaceholderText,
+                    { color: isDarkTheme ? '#000000' : colors.text },
+                  ]}>
+                  Add Background Image
+                </Text>
+                <Text
+                  style={[
+                    styles.bgPlaceholderSubtext,
+                    { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.5 },
+                  ]}>
+                  Choose a photo from your gallery
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Opacity Slider */}
+            {backgroundImage && (
+              <View
+                style={[
+                  styles.opacitySection,
+                  { borderTopColor: isDarkTheme ? '#00000010' : 'rgba(0,0,0,0.05)' },
+                ]}>
+                <View style={styles.opacityHeader}>
+                  <Text
+                    style={[styles.opacityLabel, { color: isDarkTheme ? '#000000' : colors.text }]}>
+                    Image Opacity
+                  </Text>
+                  <Text
+                    style={[
+                      styles.opacityValue,
+                      { color: isDarkTheme ? '#000000' : colors.accent },
+                    ]}>
+                    {Math.round(backgroundOpacity * 100)}%
+                  </Text>
+                </View>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={0.1}
+                  maximumValue={0.8}
+                  value={backgroundOpacity}
+                  onValueChange={handleOpacityChange}
+                  minimumTrackTintColor={isDarkTheme ? '#000000' : colors.accent}
+                  maximumTrackTintColor={isDarkTheme ? '#00000030' : colors.text + '30'}
+                  thumbTintColor={isDarkTheme ? '#000000' : colors.accent}
+                />
+                <View style={styles.opacityHints}>
+                  <Text
+                    style={[
+                      styles.opacityHint,
+                      { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.4 },
+                    ]}>
+                    Subtle
+                  </Text>
+                  <Text
+                    style={[
+                      styles.opacityHint,
+                      { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.4 },
+                    ]}>
+                    Visible
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Preview Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="eye-outline" size={20} color={colors.accent} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Preview</Text>
+          </View>
+
+          <View
+            style={[
+              styles.previewCard,
+              { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.background },
+            ]}>
+            {backgroundImage && (
               <Image
                 source={{ uri: backgroundImage }}
-                style={styles.bgPreview}
+                style={[styles.previewBgImage, { opacity: backgroundOpacity }]}
                 resizeMode="cover"
               />
-              <View style={styles.bgOverlay} />
-              <View style={styles.bgActions}>
-                <TouchableOpacity
-                  style={[styles.bgActionBtn, { backgroundColor: isDarkTheme ? '#000000' : colors.accent }]}
-                  onPress={handlePickImage}>
-                  <Ionicons name="refresh" size={18} color="#fff" />
-                  <Text style={styles.bgActionText}>Change</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.bgActionBtn, { backgroundColor: '#EF4444' }]}
-                  onPress={handleRemoveBackground}>
-                  <Ionicons name="trash" size={18} color="#fff" />
-                  <Text style={styles.bgActionText}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.bgPlaceholder}
-              onPress={handlePickImage}
-              activeOpacity={0.7}>
-              <View style={[styles.bgIconCircle, { backgroundColor: isDarkTheme ? '#00000018' : colors.accent + '20' }]}>
-                <Ionicons name="add-outline" size={32} color={isDarkTheme ? '#000000' : colors.accent} />
-              </View>
-              <Text style={[styles.bgPlaceholderText, { color: isDarkTheme ? '#000000' : colors.text }]}>
-                Add Background Image
-              </Text>
-              <Text style={[styles.bgPlaceholderSubtext, { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.5 }]}>
-                Choose a photo from your gallery
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Opacity Slider */}
-          {backgroundImage && (
-            <View style={[styles.opacitySection, { borderTopColor: isDarkTheme ? '#00000010' : 'rgba(0,0,0,0.05)' }]}>
-              <View style={styles.opacityHeader}>
-                <Text style={[styles.opacityLabel, { color: isDarkTheme ? '#000000' : colors.text }]}>Image Opacity</Text>
-                <Text style={[styles.opacityValue, { color: isDarkTheme ? '#000000' : colors.accent }]}>
-                  {Math.round(backgroundOpacity * 100)}%
-                </Text>
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={0.1}
-                maximumValue={0.8}
-                value={backgroundOpacity}
-                onValueChange={handleOpacityChange}
-                minimumTrackTintColor={isDarkTheme ? '#000000' : colors.accent}
-                maximumTrackTintColor={isDarkTheme ? '#00000030' : colors.text + '30'}
-                thumbTintColor={isDarkTheme ? '#000000' : colors.accent}
-              />
-              <View style={styles.opacityHints}>
-                <Text style={[styles.opacityHint, { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.4 }]}>
-                  Subtle
-                </Text>
-                <Text style={[styles.opacityHint, { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.4 }]}>
-                  Visible
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Preview Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="eye-outline" size={20} color={colors.accent} />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Preview</Text>
-        </View>
-
-        <View style={[styles.previewCard, { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.background }]}>
-          {backgroundImage && (
-            <Image
-              source={{ uri: backgroundImage }}
-              style={[styles.previewBgImage, { opacity: backgroundOpacity }]}
-              resizeMode="cover"
-            />
-          )}
-          <LinearGradient
-            colors={isDarkTheme ? ['#000000', '#333333', '#666666'] : colors.headerGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.previewHeader}>
-            <Text style={styles.previewHeaderText}>Dream Diary</Text>
-          </LinearGradient>
-          <View style={styles.previewContent}>
-            <View style={[styles.previewEntryCard, { backgroundColor: isDarkTheme ? '#00000010' : colors.surface }]}>
-              <View style={[styles.previewDate, { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.accent }]}>
-                <Text style={[styles.previewDateText, { color: isDarkTheme ? '#000000' : '#FFFFFF' }]}>22</Text>
-              </View>
-              <View style={styles.previewEntryContent}>
-                <Text style={[styles.previewEntryTitle, { color: isDarkTheme ? '#000000' : colors.text }]}>Sample Entry</Text>
-                <Text style={[styles.previewEntryText, { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.6 }]}>
-                  This is how your entries will look...
-                </Text>
+            )}
+            <LinearGradient
+              colors={isDarkTheme ? ['#000000', '#333333', '#666666'] : colors.headerGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.previewHeader}>
+              <Text style={styles.previewHeaderText}>Dream Diary</Text>
+            </LinearGradient>
+            <View style={styles.previewContent}>
+              <View
+                style={[
+                  styles.previewEntryCard,
+                  { backgroundColor: isDarkTheme ? '#00000010' : colors.surface },
+                ]}>
+                <View
+                  style={[
+                    styles.previewDate,
+                    { backgroundColor: isDarkTheme ? '#FFFFFF' : colors.accent },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.previewDateText,
+                      { color: isDarkTheme ? '#000000' : '#FFFFFF' },
+                    ]}>
+                    22
+                  </Text>
+                </View>
+                <View style={styles.previewEntryContent}>
+                  <Text
+                    style={[
+                      styles.previewEntryTitle,
+                      { color: isDarkTheme ? '#000000' : colors.text },
+                    ]}>
+                    Sample Entry
+                  </Text>
+                  <Text
+                    style={[
+                      styles.previewEntryText,
+                      { color: isDarkTheme ? '#000000' : colors.text, opacity: 0.6 },
+                    ]}>
+                    This is how your entries will look...
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
         </View>
-      </View>
 
-      <View style={{ height: 100 }} />
-    </ScrollView>
-    {dialogElement}
-  </>
+        <View style={{ height: 100 }} />
+      </ScrollView>
+      {dialogElement}
+    </>
   );
 }
 

@@ -1,6 +1,6 @@
 // app/_layout.tsx
-import { LogBox } from 'react-native';
-import { useState, useEffect } from 'react';
+import { AppState, LogBox } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 
 // Suppress the third-party deprecation warning for SafeAreaView
@@ -39,6 +39,7 @@ import SyncManager from '~/components/SyncManager';
 import DailyEntryManager from '~/components/DailyEntryManager';
 import { persistor, store } from '~/store/store';
 import type { ThemeKey } from '~/store/slices/themeSlice';
+import { initializeAds, shouldAttemptIdleInterstitial, showInterstitialAd } from '../util/ads';
 
 export default function Layout() {
   const [isLocked, setIsLocked] = useState(false);
@@ -58,6 +59,8 @@ export default function Layout() {
     DancingScript: DancingScript_400Regular,
     Pacifico: Pacifico_400Regular,
   });
+  const appState = useRef(AppState.currentState);
+  const backgroundedAt = useRef(Date.now());
 
   // Read the persisted theme from AsyncStorage before the store rehydrates
   useEffect(() => {
@@ -80,6 +83,38 @@ export default function Layout() {
   useEffect(() => {
     const t = setTimeout(() => setSplashDone(true), 5000);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    initializeAds().catch((error) => {
+      console.warn('AdMob initialization failed:', error);
+    });
+
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        backgroundedAt.current = Date.now();
+        appState.current = nextState;
+        return;
+      }
+
+      if (nextState === 'active' && appState.current !== 'active') {
+        const idleSeconds = Math.floor((Date.now() - backgroundedAt.current) / 1000);
+        const shouldShow = await shouldAttemptIdleInterstitial(idleSeconds);
+        if (shouldShow) {
+          try {
+            await showInterstitialAd();
+          } catch (error) {
+            console.warn('Idle interstitial failed:', error);
+          }
+        }
+      }
+
+      appState.current = nextState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   // If fonts not loaded or splash timer not done, show splash
