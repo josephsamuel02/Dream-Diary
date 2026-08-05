@@ -55,6 +55,13 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ],
       "expo-asset",
       [
         "react-native-google-mobile-ads",
@@ -80,10 +87,6 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#522017"
-      },
-      "notification": {
-        "foregroundImage": "./assets/notification-icon.png",
-        "color": "#ffffff"
       },
       "package": "com.dreamdiary.app",
       "edgeToEdgeEnabled": true,
