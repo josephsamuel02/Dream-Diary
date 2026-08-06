@@ -170,8 +170,7 @@ export default function ThemesScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [9, 16],
+        allowsEditing: false, // Disabled cropping as requested
         quality: 0.8,
       });
 

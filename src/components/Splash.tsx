@@ -1,10 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { ThemeKey } from '~/store/slices/themeSlice';
-
-const SPLASH_ICON = require('../../assets/splash_screen_icon.png');
 
 const { width, height } = Dimensions.get('window');
 
@@ -184,12 +182,8 @@ export default function Splash({ fontsLoaded = false, themeKey = 'cozy' }: Splas
       {/* Main content */}
       <Animated.View
         style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        {/* Icon badge */}
-        <View style={styles.iconWrap}>
-          <Image source={SPLASH_ICON} style={styles.splashIcon} resizeMode="contain" />
-          <View style={[styles.iconGlow, { backgroundColor: palette.accent }]} />
-        </View>
-
+        {/* Icon badge - removed as requested */}
+        
         {/* Title */}
         <Text style={[styles.title, fontsLoaded ? styles.titleFontLoaded : styles.titleFallback]}>
           Dream Diary
@@ -276,22 +270,6 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     paddingHorizontal: 32,
-  },
-  iconWrap: {
-    marginBottom: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  splashIcon: {
-    width: 110,
-    height: 110,
-  },
-  iconGlow: {
-    position: 'absolute',
-    width: 114,
-    height: 114,
-    borderRadius: 57,
-    opacity: 0.18,
   },
   title: {
     color: '#FFFFFF',

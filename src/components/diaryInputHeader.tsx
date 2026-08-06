@@ -7,7 +7,7 @@ import { useAppSelector } from '~/store/hooks';
 import { selectThemeColors } from '~/store/slices/themeSlice';
 import HeaderMenu from './HeaderMenu';
 
-const DiaryInputHeader = ({ navigation }: any) => {
+const DiaryInputHeader = ({ navigation }: { navigation: { goBack: () => void } }) => {
   const [currentDate, setCurrentDate] = useState('');
   const [currentTime, setCurrentTime] = useState('');
   const insets = useSafeAreaInsets();

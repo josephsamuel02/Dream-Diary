@@ -98,11 +98,11 @@ export function getRewardedThemeUnitId(): string {
 export function getRewardedBackgroundUnitId(): string {
   const testIds = getTestIds();
   if (isDevelopmentMode()) {
-    return testIds?.REWARDED_INTERSTITIAL || FALLBACK_TEST_IDS.REWARDED_INTERSTITIAL;
+    return testIds?.REWARDED || FALLBACK_TEST_IDS.REWARDED;
   }
   return configuredUnitIdOrFallback(
     process.env.EXPO_PUBLIC_ADMOB_REWARDED_BACKGROUND_ID,
-    testIds?.REWARDED_INTERSTITIAL || FALLBACK_TEST_IDS.REWARDED_INTERSTITIAL
+    testIds?.REWARDED || FALLBACK_TEST_IDS.REWARDED
   );
 }
 
@@ -274,11 +274,11 @@ async function showRewardedAd(unitId: string): Promise<boolean> {
       };
 
       const unsubscribeLoaded = rewardedAd.addAdEventListener(
-        ads.RewardedAdEventType.LOADED,
+        ads.RewardedAdEventType?.LOADED || ads.AdEventType.LOADED,
         onLoaded
       );
       const unsubscribeRewarded = rewardedAd.addAdEventListener(
-        ads.RewardedAdEventType.EARNED_REWARD,
+        ads.RewardedAdEventType?.EARNED_REWARD || 'rewarded',
         onReward
       );
       const unsubscribeError = rewardedAd.addAdEventListener(ads.AdEventType.ERROR, onError);
@@ -300,5 +300,8 @@ export async function showRewardedThemeAd(): Promise<boolean> {
 }
 
 export async function showRewardedBackgroundAd(): Promise<boolean> {
+  if (__DEV__) {
+    console.log('[RewardedBackgroundAd] Attempting to show background ad');
+  }
   return showRewardedAd(getRewardedBackgroundUnitId());
 }

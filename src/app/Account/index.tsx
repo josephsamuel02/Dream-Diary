@@ -42,8 +42,8 @@ interface InputFieldProps {
   onChangeText: (text: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
-  keyboardType?: any;
-  autoCapitalize?: any;
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   rightIcon?: React.ComponentProps<typeof Ionicons>['name'];
   onRightIconPress?: () => void;
 }
@@ -220,8 +220,9 @@ export default function Account() {
         buttons: [{ text: 'OK', style: 'default' }],
       });
       resetAuthForm();
-    } catch (err: any) {
-      showDialog({ title: 'Sign Up Failed', message: err.message ?? 'Something went wrong.', buttons: [{ text: 'OK', style: 'default' }] });
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showDialog({ title: 'Sign Up Failed', message: error.message ?? 'Something went wrong.', buttons: [{ text: 'OK', style: 'default' }] });
     } finally {
       setAuthLoading(false);
     }
@@ -242,8 +243,9 @@ export default function Account() {
       });
       if (error) throw error;
       resetAuthForm();
-    } catch (err: any) {
-      showDialog({ title: 'Sign In Failed', message: err.message ?? 'Invalid credentials.', buttons: [{ text: 'OK', style: 'default' }] });
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showDialog({ title: 'Sign In Failed', message: error.message ?? 'Invalid credentials.', buttons: [{ text: 'OK', style: 'default' }] });
     } finally {
       setAuthLoading(false);
     }
@@ -341,10 +343,9 @@ export default function Account() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    } as any);
+      allowsEditing: false, // Disabled cropping as requested
+      quality: 0.8,
+    });
 
     if (result.canceled || !result.assets?.length) return;
 

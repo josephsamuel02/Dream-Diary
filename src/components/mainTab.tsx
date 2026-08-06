@@ -65,7 +65,7 @@ const copyFileToAppAsync = async (uri: string, fallbackExt = 'jpg') => {
   }
 };
 
-const MainTab: React.FC = () => {
+const MainTab = () => {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -218,7 +218,8 @@ const MainTab: React.FC = () => {
       }
       const res = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: false, // Disabled cropping as requested
+        quality: 0.8,
       });
       if (!res.canceled && (res as any).assets?.length) {
         const uri = (res as any).assets[0].uri;
@@ -334,8 +335,24 @@ const MainTab: React.FC = () => {
 
   return (
     <>
+      {/* Recording lockdown overlay - blocks all interactions during recording */}
+      {isRecording && (
+        <Pressable 
+          style={styles.recordingLockdownOverlay}
+          onPress={onMicPress}
+        >
+          <View style={styles.recordingIndicator}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <Ionicons name="mic" size={32} color="#fff" />
+            </Animated.View>
+            <Text style={styles.recordingText}>Recording in progress...</Text>
+            <Text style={styles.recordingSubtext}>Tap anywhere to stop recording</Text>
+          </View>
+        </Pressable>
+      )}
+
       {/* Backdrop overlay to close menu when tapping outside */}
-      {expanded && (
+      {expanded && !isRecording && (
         <Pressable
           style={styles.backdrop}
           onPress={closeIfNotRecording}
@@ -405,7 +422,12 @@ const MainTab: React.FC = () => {
           label="Home"
           active={isActive(['/', '/index'])}
           themeColors={themeColors}
-          onPress={() => router.push('/')}
+          onPress={() => {
+            // Only navigate to home if not already there
+            if (!isActive(['/', '/index'])) {
+              router.push('/');
+            }
+          }}
         />
 
         {/* Center FAB — pencil when no entry yet, plus when expanded */}
@@ -752,6 +774,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 32,
+  },
+  recordingLockdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  recordingIndicator: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  recordingText: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'PoppinsBold',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  recordingSubtext: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'RobotoRegular',
+    marginTop: 4,
+    opacity: 0.8,
+    textAlign: 'center',
   },
 });
 

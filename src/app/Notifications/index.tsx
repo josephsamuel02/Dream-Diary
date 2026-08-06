@@ -25,7 +25,12 @@ const NotificationItem = ({
 }: {
   notification: Notification;
   onPress: (n: Notification) => void;
-  themeColors: any;
+  themeColors: {
+    accent: string;
+    text: string;
+    surface: string;
+    background: string;
+  };
 }) => {
   const isAchievement = notification.type === 'achievement';
 

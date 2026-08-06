@@ -11,7 +11,12 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
+  Text,
+  Modal,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppDialog } from '~/hooks/useAppDialog';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -67,11 +72,15 @@ export default function DiaryInputBody({
   const recorderState = useAudioRecorderState(recorder);
 
   const animatedBottom = useRef(new Animated.Value(0)).current;
+  const recordingPulse = useRef(new Animated.Value(1)).current;
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const listRef = useRef<FlatList<Block> | null>(null);
 
   // Toolbar expanded state
   const [toolbarExpanded, setToolbarExpanded] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  
   const toggleToolbarExpand = useCallback(() => {
     setToolbarExpanded((prev) => !prev);
   }, []);
@@ -80,6 +89,39 @@ export default function DiaryInputBody({
       setToolbarExpanded(false);
     }
   }, [recorderState.isRecording, toolbarExpanded]);
+
+  // Image modal handlers
+  const openImageModal = useCallback((imageUri: string) => {
+    setSelectedImageUri(imageUri);
+    setImageModalVisible(true);
+  }, []);
+
+  const closeImageModal = useCallback(() => {
+    setImageModalVisible(false);
+    setSelectedImageUri(null);
+  }, []);
+
+  // Recording pulse animation
+  useEffect(() => {
+    if (recorderState.isRecording) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(recordingPulse, {
+            toValue: 1.2,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(recordingPulse, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      recordingPulse.setValue(1);
+    }
+  }, [recorderState.isRecording, recordingPulse]);
 
   // ensure media dir (same as before)
   const ensureMediaDir = useCallback(async () => {
@@ -136,7 +178,7 @@ export default function DiaryInputBody({
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const onShow = (e: any) => {
+    const onShow = (e: { endCoordinates: { height: number } }) => {
       const height = e?.endCoordinates?.height ?? 0;
       Animated.timing(animatedBottom, {
         toValue: height,
@@ -219,7 +261,8 @@ export default function DiaryInputBody({
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
+        allowsEditing: false, // Disabled cropping as requested
+        quality: 0.8,
       });
       if (!result.canceled && (result as any).assets?.length) {
         const src = (result as any).assets[0].uri;
@@ -248,7 +291,8 @@ export default function DiaryInputBody({
       }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
+        allowsEditing: false, // Disabled cropping as requested
+        quality: 0.8,
       });
       if (!result.canceled && (result as any).assets?.length) {
         const src = (result as any).assets[0].uri;
@@ -321,7 +365,9 @@ export default function DiaryInputBody({
     if (item.type === 'text') {
       return (
         <TextInput
-          ref={(r: any) => (inputRefs.current[item.id] = r)}
+          ref={(r: TextInput | null) => {
+            inputRefs.current[item.id] = r;
+          }}
           multiline
           value={item.content}
           onChangeText={(t) => updateTextAtIndex(index, t)}
@@ -352,23 +398,36 @@ export default function DiaryInputBody({
     }
     if (item.type === 'image')
       return (
-        <Pressable
-          onLongPress={() =>
-            showDialog({
-              title: 'Delete Image',
-              message: 'Remove this image from the entry?',
-              buttons: [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
-                },
-              ],
-            })
-          }>
-          <Image source={{ uri: item.content }} className="my-2 h-72 w-full rounded-lg" />
-        </Pressable>
+        <View style={{ marginVertical: 8 }}>
+          <Pressable
+            onPress={() => openImageModal(item.content)}
+            onLongPress={() =>
+              showDialog({
+                title: 'Delete Image',
+                message: 'Remove this image from the entry?',
+                buttons: [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => dispatch(removeBlockFromEntry({ entryId, blockId: item.id })),
+                  },
+                ],
+              })
+            }
+            style={styles.imageContainer}
+          >
+            <Image 
+              source={{ uri: item.content }} 
+              style={styles.imagePreview}
+              resizeMode="cover"
+            />
+            <View style={styles.imageOverlay}>
+              <Ionicons name="expand-outline" size={20} color="#fff" />
+              <Text style={styles.imageOverlayText}>Tap to view full size</Text>
+            </View>
+          </Pressable>
+        </View>
       );
     if (item.type === 'audio')
       return (
@@ -395,8 +454,24 @@ export default function DiaryInputBody({
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      {/* Recording lockdown overlay - blocks all interactions during recording */}
+      {recorderState.isRecording && (
+        <Pressable 
+          style={styles.recordingLockdownOverlay}
+          onPress={() => recorderState.isRecording ? stopRecording() : startRecording()}
+        >
+          <View style={styles.recordingIndicator}>
+            <Animated.View style={[styles.recordingIcon, { transform: [{ scale: recordingPulse }] }]}>
+              <Ionicons name="mic" size={32} color="#fff" />
+            </Animated.View>
+            <Text style={styles.recordingText}>Recording in progress...</Text>
+            <Text style={styles.recordingSubtext}>Tap anywhere to stop recording</Text>
+          </View>
+        </Pressable>
+      )}
+
       {/* Backdrop overlay to close toolbar when tapping outside */}
-      {toolbarExpanded && (
+      {toolbarExpanded && !recorderState.isRecording && (
         <Pressable style={styles.backdrop} onPress={closeToolbarIfNotRecording} />
       )}
 
@@ -441,6 +516,35 @@ export default function DiaryInputBody({
         />
       </Animated.View>
       {dialogElement}
+      
+      {/* Full-size Image Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeImageModal}
+      >
+        <SafeAreaView style={styles.imageModalContainer}>
+          <Pressable style={styles.imageModalBackdrop} onPress={closeImageModal}>
+            <View style={styles.imageModalContent}>
+              <Pressable onPress={(e) => e.stopPropagation()}>
+                {selectedImageUri && (
+                  <Image
+                    source={{ uri: selectedImageUri }}
+                    style={styles.fullSizeImage}
+                    resizeMode="contain"
+                  />
+                )}
+              </Pressable>
+              
+              {/* Close button */}
+              <Pressable style={styles.imageModalCloseButton} onPress={closeImageModal}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </Pressable>
+            </View>
+          </Pressable>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -448,6 +552,48 @@ export default function DiaryInputBody({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  recordingLockdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  recordingIndicator: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  recordingIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  recordingText: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'PoppinsBold',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  recordingSubtext: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'RobotoRegular',
+    opacity: 0.8,
+    textAlign: 'center',
   },
   backdrop: {
     position: 'absolute',
@@ -471,5 +617,63 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     zIndex: 100,
+  },
+  imageContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  imageOverlayText: {
+    color: '#fff',
+    fontSize: 10,
+    fontFamily: 'RobotoRegular',
+  },
+  imageModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+  },
+  imageModalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageModalContent: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  fullSizeImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  imageModalCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

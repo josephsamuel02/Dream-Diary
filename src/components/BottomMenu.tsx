@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -58,10 +59,11 @@ const BottomMenu = ({ visible, onClose }: BottomMenuProps) => {
     {
       icon: 'book-outline' as const,
       label: 'Personality test',
-      sublabel: 'View all entries',
+      sublabel: 'Coming soon',
       onPress: () => {
         onClose();
-        router.push('/AllEntries');
+        // Show coming soon alert
+        Alert.alert('Coming Soon', 'The personality test feature is coming soon! Stay tuned for this exciting addition to your journaling experience.');
       },
     },
   ];

@@ -45,7 +45,7 @@ interface Props {
   onClose: () => void;
 }
 
-const AchievementUnlockedModal: React.FC<Props> = ({ badge, visible, onClose }) => {
+const AchievementUnlockedModal = ({ badge, visible, onClose }: Props) => {
   const themeColors = useAppSelector(selectThemeColors);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
