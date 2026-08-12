@@ -9,7 +9,9 @@ export type ThemeKey =
   | 'dreamy'
   | 'nature'
   | 'warm'
-  | 'dark';
+  | 'dark'
+  | 'midnight'
+  | 'lavender';
 
 export interface ThemeColors {
   background: string;
@@ -92,6 +94,22 @@ export const THEMES: Record<ThemeKey, ThemeColors> = {
     surface: '#1C1C1C',
     error: '#FF4444',
     headerGradient: ['#000000', '#0D0D0D', '#1C1C1C'],
+  },
+  midnight: {
+    background: '#030A1A',
+    text: '#F4F1FF',
+    accent: '#8B5CF6',
+    surface: '#0B1630',
+    error: '#FB7185',
+    headerGradient: ['#020617', '#0B1630', '#172554'],
+  },
+  lavender: {
+    background: '#FFF8FC',
+    text: '#29234F',
+    accent: '#8B5CF6',
+    surface: '#FFF0FA',
+    error: '#F9739A',
+    headerGradient: ['#C4B5FD', '#F0ABFC', '#FDA4AF'],
   },
 };
 

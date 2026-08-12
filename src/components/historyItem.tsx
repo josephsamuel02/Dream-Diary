@@ -54,7 +54,7 @@ export default function HistoryItem({
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
   const currentTheme = useAppSelector(selectCurrentTheme);
-  const isDarkTheme = currentTheme === 'dark';
+  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
   const { cloudSyncEnabled } = useAppSelector(selectSettings);
   const { showDialog, dialogElement } = useAppDialog();
 
@@ -93,7 +93,9 @@ export default function HistoryItem({
       // Delete from remote database if sync is enabled
       if (cloudSyncEnabled) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           const userId = session?.user?.id;
           if (userId) {
             await deleteRemoteEntry(entry.id, userId);
@@ -146,15 +148,14 @@ export default function HistoryItem({
   const hasImage = entry.blocks.some((b) => b.type === 'image');
   const hasAudio = entry.blocks.some((b) => b.type === 'audio');
   const firstImage = entry.blocks.find((b) => b.type === 'image');
-  
+
   // Get latest mood (handles both legacy single mood and new moods array)
   const latestMoodMeta = getLatestMoodFromEntry(entry);
   const moodCount = entry.moods?.length ?? (entry.mood ? 1 : 0);
 
   // Title is shown above the preview when set; otherwise the first
   // line of the preview doubles as the title.
-  const titleLine = entry.title?.trim()
-    || (preview ? preview.split('\n')[0]?.slice(0, 40) : '');
+  const titleLine = entry.title?.trim() || (preview ? preview.split('\n')[0]?.slice(0, 40) : '');
   const previewBody = entry.title?.trim()
     ? preview
     : preview.split('\n').slice(1).join(' ').trim() || preview;
@@ -225,20 +226,41 @@ export default function HistoryItem({
         <View
           style={[
             styles.dateBadge,
-            { backgroundColor: isToday ? (isDarkTheme ? '#FFFFFF' : themeColors.accent) : themeColors.surface },
-            isToday && { shadowColor: isDarkTheme ? '#FFFFFF' : themeColors.accent, shadowOpacity: 0.3 },
+            {
+              backgroundColor: isToday
+                ? isDarkTheme
+                  ? '#FFFFFF'
+                  : themeColors.accent
+                : themeColors.surface,
+            },
+            isToday && {
+              shadowColor: isDarkTheme ? '#FFFFFF' : themeColors.accent,
+              shadowOpacity: 0.3,
+            },
           ]}>
-          <Text style={[styles.dayNumber, { color: isToday ? (isDarkTheme ? '#000000' : '#fff') : themeColors.text }]}>
+          <Text
+            style={[
+              styles.dayNumber,
+              { color: isToday ? (isDarkTheme ? '#000000' : '#fff') : themeColors.text },
+            ]}>
             {day || '—'}
           </Text>
           <Text
             style={[
               styles.monthText,
-              { color: isToday ? (isDarkTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)') : themeColors.text + '70' },
+              {
+                color: isToday
+                  ? isDarkTheme
+                    ? 'rgba(0,0,0,0.7)'
+                    : 'rgba(255,255,255,0.85)'
+                  : themeColors.text + '70',
+              },
             ]}>
             {month}
           </Text>
-          {isToday && <View style={[styles.todayDot, isDarkTheme && { backgroundColor: '#000000' }]} />}
+          {isToday && (
+            <View style={[styles.todayDot, isDarkTheme && { backgroundColor: '#000000' }]} />
+          )}
         </View>
 
         {/* Middle: Content */}
@@ -293,7 +315,8 @@ export default function HistoryItem({
               ) : (
                 <>
                   <Ionicons name="happy-outline" size={11} color={themeColors.text + '60'} />
-                  <Text style={[styles.chipText, { color: themeColors.text + '70', marginLeft: 3 }]}>
+                  <Text
+                    style={[styles.chipText, { color: themeColors.text + '70', marginLeft: 3 }]}>
                     No mood
                   </Text>
                 </>
@@ -309,7 +332,10 @@ export default function HistoryItem({
               <Text
                 style={[
                   styles.chipText,
-                  { color: entry.tag ? themeColors.accent : themeColors.text + '70', marginLeft: 4 },
+                  {
+                    color: entry.tag ? themeColors.accent : themeColors.text + '70',
+                    marginLeft: 4,
+                  },
                 ]}>
                 {entry.tag || 'Add tag'}
               </Text>
@@ -317,11 +343,7 @@ export default function HistoryItem({
 
             {(hasImage || hasAudio) && (
               <View style={styles.chip}>
-                <Ionicons
-                  name={hasImage ? 'image' : 'mic'}
-                  size={11}
-                  color={themeColors.accent}
-                />
+                <Ionicons name={hasImage ? 'image' : 'mic'} size={11} color={themeColors.accent} />
               </View>
             )}
 
@@ -380,58 +402,58 @@ export default function HistoryItem({
             { left: popLeft, top: popTop, backgroundColor: themeColors.surface },
           ]}>
           <>
-              <TouchableOpacity
-                onPress={() => onOpen(entry.id)}
-                style={styles.popItem}
-                activeOpacity={0.7}>
-                <Feather
-                  name="edit-2"
-                  size={14}
-                  color={themeColors.text}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={[styles.popText, { color: themeColors.text }]}>Edit</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onOpen(entry.id)}
+              style={styles.popItem}
+              activeOpacity={0.7}>
+              <Feather
+                name="edit-2"
+                size={14}
+                color={themeColors.text}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.popText, { color: themeColors.text }]}>Edit</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  clearEntry();
-                  closeMenu();
-                }}
-                style={styles.popItem}
-                activeOpacity={0.7}>
-                <Feather
-                  name="refresh-cw"
-                  size={14}
-                  color={themeColors.text}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={[styles.popText, { color: themeColors.text }]}>Clear</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                clearEntry();
+                closeMenu();
+              }}
+              style={styles.popItem}
+              activeOpacity={0.7}>
+              <Feather
+                name="refresh-cw"
+                size={14}
+                color={themeColors.text}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.popText, { color: themeColors.text }]}>Clear</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  closeMenu();
-                  showDialog({
-                    title: 'Delete Entry',
-                    message: 'This entry will be permanently removed. This cannot be undone.',
-                    buttons: [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: performDelete },
-                    ],
-                  });
-                }}
-                style={[styles.popItem, styles.destructive]}
-                activeOpacity={0.7}>
-                <Feather
-                  name="trash-2"
-                  size={14}
-                  color={themeColors.error}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={[styles.popText, { color: themeColors.error }]}>Delete</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              onPress={() => {
+                closeMenu();
+                showDialog({
+                  title: 'Delete Entry',
+                  message: 'This entry will be permanently removed. This cannot be undone.',
+                  buttons: [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: performDelete },
+                  ],
+                });
+              }}
+              style={[styles.popItem, styles.destructive]}
+              activeOpacity={0.7}>
+              <Feather
+                name="trash-2"
+                size={14}
+                color={themeColors.error}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.popText, { color: themeColors.error }]}>Delete</Text>
+            </TouchableOpacity>
+          </>
         </View>
       </Modal>
       {dialogElement}

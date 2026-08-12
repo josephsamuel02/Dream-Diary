@@ -90,6 +90,22 @@ const SPLASH_THEMES: Record<
     icon: 'planet',
     iconGradient: ['#3B82F6', '#1D4ED8'],
   },
+  midnight: {
+    gradient: ['#010617', '#07133A', '#172554', '#4C1D95'],
+    accent: '#C4B5FD',
+    orbColor: '#312E81',
+    starColor: '#EDE9FE',
+    icon: 'moon',
+    iconGradient: ['#8B5CF6', '#4C1D95'],
+  },
+  lavender: {
+    gradient: ['#F5F3FF', '#E9D5FF', '#F5D0FE', '#FDA4AF'],
+    accent: '#4C1D95',
+    orbColor: '#C084FC',
+    starColor: '#FFFFFF',
+    icon: 'sparkles',
+    iconGradient: ['#A855F7', '#EC4899'],
+  },
 };
 
 interface SplashProps {
@@ -183,7 +199,7 @@ export default function Splash({ fontsLoaded = false, themeKey = 'cozy' }: Splas
       <Animated.View
         style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         {/* Icon badge - removed as requested */}
-        
+
         {/* Title */}
         <Text style={[styles.title, fontsLoaded ? styles.titleFontLoaded : styles.titleFallback]}>
           Dream Diary

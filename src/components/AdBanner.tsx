@@ -1,4 +1,4 @@
-// AdMob is native-only; keep the web bundle free of native ad dependencies.
+// Temporarily disabled while polishing the app theme and background experience.
 export default function AdBanner() {
   return null;
 }

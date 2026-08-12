@@ -1,12 +1,5 @@
 import { useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -149,7 +142,7 @@ const ProgressBar = ({
 const AchievementsScreen = () => {
   const themeColors = useAppSelector(selectThemeColors);
   const currentTheme = useAppSelector(selectCurrentTheme);
-  const isDarkTheme = currentTheme === 'dark';
+  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(18)).current;
@@ -177,22 +170,17 @@ const AchievementsScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <Animated.View
-        style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 140 }}>
-
           {/* ── Summary hero card ───────────────────────────── */}
           <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
             <LinearGradient
               colors={[themeColors.surface, themeColors.background, themeColors.surface]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[
-                styles.heroCard,
-                { borderColor: themeColors.accent + '25' },
-              ]}>
+              style={[styles.heroCard, { borderColor: themeColors.accent + '25' }]}>
               {/* Total days badge */}
               <View style={[styles.totalBadge, { backgroundColor: themeColors.accent + '18' }]}>
                 <Text style={styles.totalBadgeEmoji}>🏅</Text>
@@ -228,9 +216,7 @@ const AchievementsScreen = () => {
                 styles.card,
                 {
                   backgroundColor: themeColors.surface,
-                  borderColor: hasCompletedToday
-                    ? '#10B981' + '40'
-                    : themeColors.accent + '20',
+                  borderColor: hasCompletedToday ? '#10B981' + '40' : themeColors.accent + '20',
                 },
               ]}>
               <View style={styles.cardHeader}>
@@ -248,7 +234,9 @@ const AchievementsScreen = () => {
                   style={[
                     styles.cardBadge,
                     {
-                      backgroundColor: hasCompletedToday ? '#10B981' + '20' : themeColors.accent + '15',
+                      backgroundColor: hasCompletedToday
+                        ? '#10B981' + '20'
+                        : themeColors.accent + '15',
                       color: hasCompletedToday ? '#10B981' : themeColors.accent,
                     },
                   ]}>

@@ -5,12 +5,8 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '~/lib/supabase';
 import { syncAllEntries, upsertEntry, pullRemoteEntries } from '~/util/diarySync';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
-import {
-  mergeRemoteEntries,
-  selectEntries,
-  type DiaryEntry,
-} from '~/store/slices/diarySlice';
-import { selectSettings, setLastSyncedAt } from '~/store/slices/settingsSlice';
+import { mergeRemoteEntries, selectEntries, type DiaryEntry } from '~/store/slices/diarySlice';
+import { selectSettings, setCloudSync, setLastSyncedAt } from '~/store/slices/settingsSlice';
 
 /**
  * SyncManager — rendered once inside the Redux Provider.
@@ -67,13 +63,24 @@ export default function SyncManager() {
 
   // Keep sessionRef up to date so handlers always see the latest user.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      sessionRef.current = session;
-      if (session?.user?.id && cloudSyncEnabled) {
-        // Triggered initial reconcile when the saved session is restored.
-        runReconcile();
+    const initSession = async () => {
+      try {
+        const online = await isStateOnline(await NetInfo.fetch());
+        if (!online) return;
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        sessionRef.current = session;
+        if (session?.user?.id && cloudSyncEnabled) {
+          runReconcile();
+        }
+      } catch {
+        // Ignore transient network/auth errors while offline or during startup
       }
-    });
+    };
+
+    initSession();
 
     const {
       data: { subscription },
@@ -82,7 +89,6 @@ export default function SyncManager() {
       sessionRef.current = session;
       const isLoggedIn = !!session?.user?.id;
       if (!wasLoggedIn && isLoggedIn && cloudSyncEnabled) {
-        // Fresh login -> pull remote, merge, push local.
         runReconcile();
       }
       if (!isLoggedIn) {
@@ -156,9 +162,7 @@ export default function SyncManager() {
     if (!userId) return;
 
     const local = entriesRef.current;
-    const dirty = local.filter(
-      (e) => e.updatedAt && lastPushedRef.current[e.id] !== e.updatedAt
-    );
+    const dirty = local.filter((e) => e.updatedAt && lastPushedRef.current[e.id] !== e.updatedAt);
     if (dirty.length === 0) return;
 
     let anySynced = false;
@@ -223,13 +227,23 @@ export default function SyncManager() {
   // we were dark.
   useEffect(() => {
     NetInfo.fetch().then((state) => {
-      isOnlineRef.current = isStateOnline(state);
+      const nextOnline = isStateOnline(state);
+      isOnlineRef.current = nextOnline;
+
+      if (!nextOnline && cloudSyncEnabled) {
+        dispatch(setCloudSync(false));
+      }
     });
 
     const unsubscribe = NetInfo.addEventListener((state) => {
       const nextOnline = isStateOnline(state);
       const wasOnline = isOnlineRef.current;
       isOnlineRef.current = nextOnline;
+
+      if (!nextOnline && cloudSyncEnabled) {
+        dispatch(setCloudSync(false));
+        return;
+      }
 
       if (!wasOnline && nextOnline) {
         // Just came back online — drain pending writes first so the
@@ -242,7 +256,7 @@ export default function SyncManager() {
     });
 
     return () => unsubscribe();
-  }, [flushDirtyEntries, runReconcile]);
+  }, [cloudSyncEnabled, dispatch, flushDirtyEntries, runReconcile]);
 
   return null;
 }

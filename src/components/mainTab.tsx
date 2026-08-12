@@ -73,7 +73,7 @@ const MainTab = () => {
   const entries = useAppSelector(selectEntries);
   const themeColors = useAppSelector(selectThemeColors);
   const currentTheme = useAppSelector(selectCurrentTheme);
-  const isDarkTheme = currentTheme === 'dark';
+  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
 
   // modal for camera options
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
@@ -331,16 +331,14 @@ const MainTab = () => {
   }, [isRecording, expanded, toggleExpand]);
 
   // Bottom nav tab definitions (left/right pairs around the centered FAB).
-  const isActive = (paths: string[]) => paths.some((p) => pathname === p || pathname?.startsWith(p));
+  const isActive = (paths: string[]) =>
+    paths.some((p) => pathname === p || pathname?.startsWith(p));
 
   return (
     <>
       {/* Recording lockdown overlay - blocks all interactions during recording */}
       {isRecording && (
-        <Pressable 
-          style={styles.recordingLockdownOverlay}
-          onPress={onMicPress}
-        >
+        <Pressable style={styles.recordingLockdownOverlay} onPress={onMicPress}>
           <View style={styles.recordingIndicator}>
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
               <Ionicons name="mic" size={32} color="#fff" />
@@ -353,10 +351,7 @@ const MainTab = () => {
 
       {/* Backdrop overlay to close menu when tapping outside */}
       {expanded && !isRecording && (
-        <Pressable
-          style={styles.backdrop}
-          onPress={closeIfNotRecording}
-        />
+        <Pressable style={styles.backdrop} onPress={closeIfNotRecording} />
       )}
 
       {/* Floating expanded actions (mic / photo) — sit above the FAB
@@ -366,10 +361,7 @@ const MainTab = () => {
         pointerEvents={expanded ? 'box-none' : 'none'}>
         <Animated.View
           pointerEvents={expanded ? 'auto' : 'none'}
-          style={[
-            styles.actionButton,
-            { transform: [{ scale: micScale }], opacity: micOpacity },
-          ]}>
+          style={[styles.actionButton, { transform: [{ scale: micScale }], opacity: micOpacity }]}>
           <TouchableOpacity onPress={onMicPress} activeOpacity={0.8} style={styles.secondaryButton}>
             <Animated.View
               style={[
@@ -442,7 +434,8 @@ const MainTab = () => {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.fab, { shadowColor: themeColors.accent }]}>
-                <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
+                <Animated.View
+                  style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
                   <Ionicons
                     name={hasTodayEntry ? 'add' : 'create-outline'}
                     size={26}
@@ -556,10 +549,7 @@ const NavButton = ({
   onPress: () => void;
 }) => {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.navButton}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.navButton}>
       <View
         style={[
           styles.navIconWrap,
@@ -574,10 +564,7 @@ const NavButton = ({
         />
       </View>
       <Text
-        style={[
-          styles.navLabel,
-          { color: active ? themeColors.accent : themeColors.text + '90' },
-        ]}>
+        style={[styles.navLabel, { color: active ? themeColors.accent : themeColors.text + '90' }]}>
         {label}
       </Text>
     </TouchableOpacity>

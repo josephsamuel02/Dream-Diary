@@ -38,7 +38,6 @@ import {
   DIARY_FONT_SIZE_MAX,
   DIARY_FONT_SIZE_DEFAULT,
 } from '~/store/slices/settingsSlice';
-import { showRewardedBackgroundAd, showRewardedThemeAd } from '~/util/ads';
 
 const THEME_OPTIONS: { key: ThemeKey; name: string; emoji: string }[] = [
   { key: 'blossom', name: 'Blossom', emoji: '🌸' },
@@ -50,6 +49,8 @@ const THEME_OPTIONS: { key: ThemeKey; name: string; emoji: string }[] = [
   { key: 'nature', name: 'Nature', emoji: '🌿' },
   { key: 'warm', name: 'Warm', emoji: '☀️' },
   { key: 'dark', name: 'Dark', emoji: '🌑' },
+  { key: 'midnight', name: 'Midnight Journal', emoji: '🌌' },
+  { key: 'lavender', name: 'Lavender Moon', emoji: '🌙' },
 ];
 
 type FontOption = {
@@ -130,34 +131,14 @@ export default function ThemesScreen() {
 
   const selectedFontOption = FONT_OPTIONS.find((f) => f.key === currentFont) ?? FONT_OPTIONS[0];
 
-  const isDarkTheme = currentTheme === 'dark';
+  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
 
-  const handleThemeSelect = async (themeKey: ThemeKey) => {
-    const confirmed = await showRewardedThemeAd().catch(() => false);
-    if (!confirmed) {
-      showDialog({
-        title: 'Theme unlock unavailable',
-        message: 'Please try the rewarded ad again to unlock a theme change.',
-        buttons: [{ text: 'OK', style: 'default' }],
-      });
-      return;
-    }
-
+  const handleThemeSelect = (themeKey: ThemeKey) => {
     dispatch(setTheme(themeKey));
   };
 
   const handlePickImage = async () => {
     try {
-      const rewarded = await showRewardedBackgroundAd().catch(() => false);
-      if (!rewarded) {
-        showDialog({
-          title: 'Reward needed',
-          message: 'Watch the rewarded ad to unlock a new background image.',
-          buttons: [{ text: 'OK', style: 'default' }],
-        });
-        return;
-      }
-
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         showDialog({
@@ -255,7 +236,7 @@ export default function ThemesScreen() {
             {THEME_OPTIONS.map((theme) => {
               const themeColors = THEMES[theme.key];
               const isSelected = currentTheme === theme.key;
-              const isItemDark = theme.key === 'dark';
+              const isItemDark = theme.key === 'dark' || theme.key === 'midnight';
 
               return (
                 <TouchableOpacity
