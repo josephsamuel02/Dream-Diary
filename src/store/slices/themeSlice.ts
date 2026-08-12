@@ -120,7 +120,7 @@ export interface ThemeState {
 }
 
 const initialState: ThemeState = {
-  currentTheme: 'cozy',
+  currentTheme: 'dark',
   backgroundImage: null,
   backgroundOpacity: 0.3,
 };
