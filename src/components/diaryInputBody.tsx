@@ -172,6 +172,15 @@ export default function DiaryInputBody({
         console.warn('Permission or audio init error:', e);
       }
     })();
+    // On unmount: stop any in-progress recording and drop mic mode so the
+    // microphone foreground service never outlives the screen (Play FGS rule).
+    return () => {
+      try {
+        if (recorderState.isRecording) recorder.stop().catch(() => {});
+      } catch {}
+      setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ensureMediaDir]);
 
   // keyboard animation (same)
@@ -262,7 +271,7 @@ export default function DiaryInputBody({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: false, // Disabled cropping as requested
-        quality: 0.8,
+        quality: 0.6, // 0.6 keeps photos sharp while cutting RAM/disk ~40% vs 0.8
       });
       if (!result.canceled && (result as any).assets?.length) {
         const src = (result as any).assets[0].uri;
@@ -292,7 +301,7 @@ export default function DiaryInputBody({
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
         allowsEditing: false, // Disabled cropping as requested
-        quality: 0.8,
+        quality: 0.6, // lower RAM + faster uploads; still sharp on-device
       });
       if (!result.canceled && (result as any).assets?.length) {
         const src = (result as any).assets[0].uri;
@@ -492,6 +501,10 @@ export default function DiaryInputBody({
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={5}
+            updateCellsBatchingPeriod={50}
+            removeClippedSubviews
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.listContent}
           />

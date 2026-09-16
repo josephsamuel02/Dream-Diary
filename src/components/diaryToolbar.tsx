@@ -211,12 +211,21 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
   const currentTime = status?.currentTime ?? 0;
   const duration = status?.duration ?? 0;
 
-  // Ensure audio mode is set for playback when component mounts
+  // Ensure audio mode is set for playback when component mounts,
+  // and pause on unmount so the audio foreground service never lingers
+  // (memory + Android 15 restricted-FGS Play warning).
   useEffect(() => {
     setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch((e) =>
       console.warn('Failed to set audio mode for playback:', e)
     );
-  }, []);
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // ignore — player may already be released
+      }
+    };
+  }, [player]);
 
   const onTogglePlay = useCallback(async () => {
     try {

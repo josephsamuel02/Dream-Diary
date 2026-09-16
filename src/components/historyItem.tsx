@@ -18,7 +18,7 @@ import { useAppDialog } from '~/hooks/useAppDialog';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { replaceBlocksForEntry, removeEntry } from '~/store/slices/diarySlice';
 import type { Mood, MoodEntry } from '~/store/slices/diarySlice';
-import { selectCurrentTheme, selectThemeColors } from '~/store/slices/themeSlice';
+import { selectCurrentTheme, selectThemeColors, isDarkThemeKey } from '~/store/slices/themeSlice';
 import { selectSettings } from '~/store/slices/settingsSlice';
 import { useToday } from '~/util/useToday';
 import { getMoodMeta, getLatestMoodFromEntry, formatMoodTime } from '~/util/moods';
@@ -54,7 +54,7 @@ export default function HistoryItem({
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
   const currentTheme = useAppSelector(selectCurrentTheme);
-  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
+  const isDarkTheme = isDarkThemeKey(currentTheme);
   const { cloudSyncEnabled } = useAppSelector(selectSettings);
   const { showDialog, dialogElement } = useAppDialog();
 

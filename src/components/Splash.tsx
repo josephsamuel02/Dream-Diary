@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,105 +6,99 @@ import type { ThemeKey } from '~/store/slices/themeSlice';
 
 const { width, height } = Dimensions.get('window');
 
-// Per-theme splash palettes: gradient stops, accent, icon name, star color
+// Per-theme splash palettes, kept in sync with THEMES in
+// `src/store/slices/themeSlice.ts`:
+// - gradient end / dots / divider use the theme's accent so the loader
+//   flows into the app without a color jump.
+// - titleColor is white on the 7 dark-background themes and the theme's
+//   dark text color on the 4 light themes (blossom, rose, lilac, lavender)
+//   so the title stays readable during load.
 const SPLASH_THEMES: Record<
   ThemeKey,
   {
     gradient: [string, string, string, string];
     accent: string;
+    titleColor: string;
     orbColor: string;
     starColor: string;
-    icon: React.ComponentProps<typeof Ionicons>['name'];
-    iconGradient: [string, string];
   }
 > = {
   blossom: {
     gradient: ['#FFE4F0', '#FBCFE8', '#F472B6', '#EC4899'],
-    accent: '#FCE7F3',
+    accent: '#EC4899',
+    titleColor: '#5C2A3A',
     orbColor: '#F472B6',
-    starColor: '#FFFFFF',
-    icon: 'flower',
-    iconGradient: ['#EC4899', '#DB2777'],
+    starColor: '#9D174D',
   },
   rose: {
     gradient: ['#FFE4E6', '#FECDD3', '#FB7185', '#E11D48'],
-    accent: '#FFE4E6',
+    accent: '#E11D48',
+    titleColor: '#6B2737',
     orbColor: '#FB7185',
-    starColor: '#FFFFFF',
-    icon: 'rose',
-    iconGradient: ['#E11D48', '#BE123C'],
+    starColor: '#9F1239',
   },
   lilac: {
     gradient: ['#EDE9FE', '#DDD6FE', '#A78BFA', '#8B5CF6'],
-    accent: '#EDE9FE',
+    accent: '#8B5CF6',
+    titleColor: '#4C1D95',
     orbColor: '#A78BFA',
-    starColor: '#FFFFFF',
-    icon: 'heart',
-    iconGradient: ['#8B5CF6', '#7C3AED'],
+    starColor: '#6D28D9',
   },
   cozy: {
     gradient: ['#1A0A00', '#4A1A00', '#8B3A00', '#B45309'],
-    accent: '#F59E0B',
+    accent: '#E8923A',
+    titleColor: '#FFFFFF',
     orbColor: '#92400E',
     starColor: '#FDE68A',
-    icon: 'cafe',
-    iconGradient: ['#D97706', '#92400E'],
   },
   night: {
     gradient: ['#020B2A', '#061B6E', '#1D4ED8', '#3B82F6'],
-    accent: '#93C5FD',
+    accent: '#60A5FA',
+    titleColor: '#FFFFFF',
     orbColor: '#1D4ED8',
     starColor: '#DBEAFE',
-    icon: 'sparkles',
-    iconGradient: ['#3B82F6', '#1D4ED8'],
   },
   dreamy: {
     gradient: ['#0D0720', '#2A1060', '#5B21B6', '#7C3AED'],
-    accent: '#C4B5FD',
+    accent: '#A78BFA',
+    titleColor: '#FFFFFF',
     orbColor: '#5B21B6',
     starColor: '#EDE9FE',
-    icon: 'moon',
-    iconGradient: ['#7C3AED', '#5B21B6'],
   },
   nature: {
     gradient: ['#001A0A', '#013A18', '#047857', '#059669'],
-    accent: '#6EE7B7',
+    accent: '#34D399',
+    titleColor: '#FFFFFF',
     orbColor: '#047857',
     starColor: '#D1FAE5',
-    icon: 'leaf',
-    iconGradient: ['#10B981', '#047857'],
   },
   warm: {
     gradient: ['#1A0A00', '#4A1C00', '#92400E', '#D97706'],
-    accent: '#FCD34D',
+    accent: '#FBBF24',
+    titleColor: '#FFFFFF',
     orbColor: '#92400E',
     starColor: '#FEF3C7',
-    icon: 'sunny',
-    iconGradient: ['#F59E0B', '#B45309'],
   },
   dark: {
     gradient: ['#000000', '#030712', '#111827', '#1F2937'],
-    accent: '#60A5FA',
+    accent: '#FFFFFF',
+    titleColor: '#FFFFFF',
     orbColor: '#1F2937',
     starColor: '#E5E7EB',
-    icon: 'planet',
-    iconGradient: ['#3B82F6', '#1D4ED8'],
   },
   midnight: {
     gradient: ['#010617', '#07133A', '#172554', '#4C1D95'],
-    accent: '#C4B5FD',
+    accent: '#8B5CF6',
+    titleColor: '#FFFFFF',
     orbColor: '#312E81',
     starColor: '#EDE9FE',
-    icon: 'moon',
-    iconGradient: ['#8B5CF6', '#4C1D95'],
   },
   lavender: {
     gradient: ['#F5F3FF', '#E9D5FF', '#F5D0FE', '#FDA4AF'],
     accent: '#4C1D95',
+    titleColor: '#29234F',
     orbColor: '#C084FC',
-    starColor: '#FFFFFF',
-    icon: 'sparkles',
-    iconGradient: ['#A855F7', '#EC4899'],
+    starColor: '#7C3AED',
   },
 };
 
@@ -113,8 +107,8 @@ interface SplashProps {
   themeKey?: ThemeKey;
 }
 
-export default function Splash({ fontsLoaded = false, themeKey = 'cozy' }: SplashProps) {
-  const palette = SPLASH_THEMES[themeKey] ?? SPLASH_THEMES.cozy;
+export default function Splash({ fontsLoaded = false, themeKey = 'dark' }: SplashProps) {
+  const palette = SPLASH_THEMES[themeKey] ?? SPLASH_THEMES.dark;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
@@ -201,7 +195,12 @@ export default function Splash({ fontsLoaded = false, themeKey = 'cozy' }: Splas
         {/* Icon badge - removed as requested */}
 
         {/* Title */}
-        <Text style={[styles.title, fontsLoaded ? styles.titleFontLoaded : styles.titleFallback]}>
+        <Text
+          style={[
+            styles.title,
+            { color: palette.titleColor },
+            fontsLoaded ? styles.titleFontLoaded : styles.titleFallback,
+          ]}>
           Dream Diary
         </Text>
 
@@ -221,7 +220,7 @@ export default function Splash({ fontsLoaded = false, themeKey = 'cozy' }: Splas
         <Text
           style={[
             styles.tagline,
-            { color: palette.accent },
+            { color: palette.titleColor },
             fontsLoaded && styles.taglineFontLoaded,
           ]}>
           Capture your dreams &amp; thoughts
@@ -288,7 +287,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   title: {
-    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 14,
   },

@@ -119,6 +119,25 @@ export interface ThemeState {
   backgroundOpacity: number;
 }
 
+/**
+ * Single source of truth for "is this a dark-background theme?".
+ * Dark: cozy, night, dreamy, nature, warm, dark, midnight.
+ * Light: blossom, rose, lilac, lavender.
+ * Keep in sync with SPLASH_THEMES titleColor in `src/components/Splash.tsx`
+ * (dark splash screens use white titles, light ones use dark titles).
+ */
+export const DARK_THEME_KEYS: ThemeKey[] = [
+  'cozy',
+  'night',
+  'dreamy',
+  'nature',
+  'warm',
+  'dark',
+  'midnight',
+];
+
+export const isDarkThemeKey = (key: ThemeKey): boolean => DARK_THEME_KEYS.includes(key);
+
 const initialState: ThemeState = {
   currentTheme: 'dark',
   backgroundImage: null,

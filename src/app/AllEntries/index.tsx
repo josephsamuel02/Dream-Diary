@@ -143,6 +143,11 @@ export default function AllEntries() {
         keyExtractor={([monthYear]) => monthYear}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={5}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews
         renderItem={({ item: [monthYear, monthEntries] }) => (
           <View style={styles.monthGroup}>
             {/* Month Header */}

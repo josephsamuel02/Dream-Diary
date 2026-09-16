@@ -26,6 +26,7 @@ import {
   selectCurrentTheme,
   selectBackgroundImage,
   selectBackgroundOpacity,
+  isDarkThemeKey,
   THEMES,
   ThemeKey,
 } from '~/store/slices/themeSlice';
@@ -131,7 +132,7 @@ export default function ThemesScreen() {
 
   const selectedFontOption = FONT_OPTIONS.find((f) => f.key === currentFont) ?? FONT_OPTIONS[0];
 
-  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
+  const isDarkTheme = isDarkThemeKey(currentTheme);
 
   const handleThemeSelect = (themeKey: ThemeKey) => {
     dispatch(setTheme(themeKey));
@@ -150,9 +151,9 @@ export default function ThemesScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false, // Disabled cropping as requested
-        quality: 0.8,
+        quality: 0.6, // background art doesn't need full-res; saves RAM
       });
 
       if (!result.canceled && result.assets?.length) {
@@ -236,7 +237,7 @@ export default function ThemesScreen() {
             {THEME_OPTIONS.map((theme) => {
               const themeColors = THEMES[theme.key];
               const isSelected = currentTheme === theme.key;
-              const isItemDark = theme.key === 'dark' || theme.key === 'midnight';
+              const isItemDark = isDarkThemeKey(theme.key);
 
               return (
                 <TouchableOpacity

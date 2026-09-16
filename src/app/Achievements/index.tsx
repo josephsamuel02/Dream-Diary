@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAppSelector } from '~/store/hooks';
-import { selectCurrentTheme, selectThemeColors } from '~/store/slices/themeSlice';
+import { selectThemeColors } from '~/store/slices/themeSlice';
 import { useAchievements } from '~/hooks/useAchievements';
 import { BADGES, REQUIRED_ENTRIES_PER_DAY } from '~/constants/badges';
 import type { Badge } from '~/constants/badges';
@@ -141,8 +141,6 @@ const ProgressBar = ({
 // ─── Main screen ─────────────────────────────────────────────────────────────
 const AchievementsScreen = () => {
   const themeColors = useAppSelector(selectThemeColors);
-  const currentTheme = useAppSelector(selectCurrentTheme);
-  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(18)).current;
@@ -227,7 +225,7 @@ const AchievementsScreen = () => {
                     color={hasCompletedToday ? '#10B981' : themeColors.accent}
                   />
                   <Text style={[styles.cardTitle, { color: themeColors.text }]}>
-                    Today's Progress
+                    Today&apos;s Progress
                   </Text>
                 </View>
                 <Text
@@ -254,7 +252,7 @@ const AchievementsScreen = () => {
 
               {hasCompletedToday && (
                 <Text style={[styles.progressHint, { color: '#10B981' }]}>
-                  You completed today's achievement! Come back tomorrow to keep the streak going.
+                  You completed today&apos;s achievement! Come back tomorrow to keep the streak going.
                 </Text>
               )}
 

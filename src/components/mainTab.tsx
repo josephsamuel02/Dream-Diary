@@ -32,7 +32,7 @@ import {
 // redux
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { selectEntries, addBlockToEntry } from '~/store/slices/diarySlice';
-import { selectCurrentTheme, selectThemeColors } from '~/store/slices/themeSlice';
+import { selectThemeColors } from '~/store/slices/themeSlice';
 import { store } from '~/store/store';
 import { useToday } from '~/util/useToday';
 import { ensureTodayEntry } from '~/util/ensureTodayEntry';
@@ -72,8 +72,6 @@ const MainTab = () => {
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
   const themeColors = useAppSelector(selectThemeColors);
-  const currentTheme = useAppSelector(selectCurrentTheme);
-  const isDarkTheme = currentTheme === 'dark' || currentTheme === 'midnight';
 
   // modal for camera options
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
@@ -217,9 +215,9 @@ const MainTab = () => {
         return;
       }
       const res = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false, // Disabled cropping as requested
-        quality: 0.8,
+        quality: 0.6,
       });
       if (!res.canceled && (res as any).assets?.length) {
         const uri = (res as any).assets[0].uri;
@@ -248,8 +246,9 @@ const MainTab = () => {
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false,
+        quality: 0.6,
       });
       if (!res.canceled && (res as any).assets?.length) {
         const uri = (res as any).assets[0].uri;

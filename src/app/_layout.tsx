@@ -9,6 +9,7 @@ LogBox.ignoreLogs([
   'SafeAreaView has been extracted from react-native',
 ]);
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useFonts, Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Roboto_400Regular, Roboto_500Medium } from '@expo-google-fonts/roboto';
 import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
@@ -43,7 +44,7 @@ import { initializeAds, shouldAttemptIdleInterstitial, showInterstitialAd } from
 
 export default function Layout() {
   const [isLocked, setIsLocked] = useState(false);
-  const [savedTheme, setSavedTheme] = useState<ThemeKey>('cozy');
+  const [savedTheme, setSavedTheme] = useState<ThemeKey>('dark');
 
   const [fontsLoaded] = useFonts({
     PoppinsRegular: Poppins_400Regular,
@@ -147,7 +148,11 @@ export default function Layout() {
           <LockScreen onUnlocked={() => setIsLocked(false)} />
         ) : (
           <SafeAreaProvider>
-            <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+            {/* Modern edge-to-edge status bar (Android 15+). Replaces manual
+                Window.setStatusBarColor / setNavigationBarColor calls flagged
+                as deprecated by Play. Headers pad via useSafeAreaInsets. */}
+            <StatusBar style="auto" translucent />
+            <SafeAreaView style={{ flex: 1 }} edges={['bottom', 'left', 'right']}>
               {/* Creates a fresh diary entry every day at local midnight
                   and on app foreground, so each day always has its own
                   isolated bucket. */}

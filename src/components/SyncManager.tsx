@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '~/lib/supabase';
+import { supabase, isSupabaseConfigured } from '~/lib/supabase';
 import { syncAllEntries, upsertEntry, pullRemoteEntries } from '~/util/diarySync';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { mergeRemoteEntries, selectEntries, type DiaryEntry } from '~/store/slices/diarySlice';
@@ -109,6 +109,7 @@ export default function SyncManager() {
     if (isReconcilingRef.current) return;
     if (!cloudSyncEnabled) return;
     if (!isOnlineRef.current) return; // skip silently while offline
+    if (!isSupabaseConfigured()) return; // sync disabled until env is set
     const userId = sessionRef.current?.user?.id;
     if (!userId) return;
 
@@ -158,6 +159,7 @@ export default function SyncManager() {
   const flushDirtyEntries = useCallback(async () => {
     if (!cloudSyncEnabled) return;
     if (!isOnlineRef.current) return;
+    if (!isSupabaseConfigured()) return;
     const userId = sessionRef.current?.user?.id;
     if (!userId) return;
 
