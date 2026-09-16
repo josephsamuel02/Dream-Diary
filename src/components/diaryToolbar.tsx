@@ -183,7 +183,10 @@ export default function DiaryToolbar({
       </Animated.View>
 
       {/* Main FAB */}
-      <TouchableOpacity onPress={onToggleExpand} activeOpacity={0.9} style={localStyles.fabContainer}>
+      <TouchableOpacity
+        onPress={onToggleExpand}
+        activeOpacity={0.9}
+        style={localStyles.fabContainer}>
         <LinearGradient
           colors={[themeColors.headerGradient[1], themeColors.headerGradient[0]]}
           start={{ x: 0, y: 0 }}
@@ -208,12 +211,21 @@ export const AudioPlayer = ({ uri }: { uri: string }) => {
   const currentTime = status?.currentTime ?? 0;
   const duration = status?.duration ?? 0;
 
-  // Ensure audio mode is set for playback when component mounts
+  // Ensure audio mode is set for playback when component mounts,
+  // and pause on unmount so the audio foreground service never lingers
+  // (memory + Android 15 restricted-FGS Play warning).
   useEffect(() => {
     setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch((e) =>
       console.warn('Failed to set audio mode for playback:', e)
     );
-  }, []);
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // ignore — player may already be released
+      }
+    };
+  }, [player]);
 
   const onTogglePlay = useCallback(async () => {
     try {

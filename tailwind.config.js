@@ -9,61 +9,87 @@ module.exports = {
       white: '#ffffff',
       black: '#000000',
 
-      // Clean Palette
-      clean_background: '#FDFCFB',
-      clean_text: '#2D2D2D',
-      clean_accent: '#3B82F6',
-      clean_surface: '#F9FAFB',
-      clean_error: '#EF4444',
+      // NOTE: generated from THEMES in src/store/slices/themeSlice.ts.
+      // All app colors come from the Redux theme at runtime; these entries
+      // only exist so `bg-<theme>-*` / `text-<theme>-*` utilities resolve to
+      // the same values. Keep in sync when THEMES changes.
+
+      // Blossom Palette
+      blossom_background: '#FFF0F6',
+      blossom_text: '#5C2A3A',
+      blossom_accent: '#EC4899',
+      blossom_surface: '#FCE7F3',
+      blossom_error: '#F87171',
+
+      // Rose Palette
+      rose_background: '#FFF1F2',
+      rose_text: '#6B2737',
+      rose_accent: '#E11D48',
+      rose_surface: '#FFE4E6',
+      rose_error: '#F87171',
+
+      // Lilac Palette
+      lilac_background: '#F5F3FF',
+      lilac_text: '#4C1D95',
+      lilac_accent: '#8B5CF6',
+      lilac_surface: '#EDE9FE',
+      lilac_error: '#F87171',
 
       // Cozy Palette
-      cozy_background: '#F5EDE0',
-      cozy_text: '#3E2723',
-      cozy_accent: '#D97706',
-      cozy_surface: '#FFF7ED',
-      cozy_error: '#DC2626',
+      cozy_background: '#2C1810',
+      cozy_text: '#F5E6D3',
+      cozy_accent: '#E8923A',
+      cozy_surface: '#3D2215',
+      cozy_error: '#F87171',
+
+      // Night Palette
+      night_background: '#0F1729',
+      night_text: '#E2E8F0',
+      night_accent: '#60A5FA',
+      night_surface: '#1E2D45',
+      night_error: '#F87171',
 
       // Dreamy Palette
-      dreamy_background: '#E0E7FF',
-      dreamy_text: '#1E1B4B',
+      dreamy_background: '#1E1433',
+      dreamy_text: '#EDE9FE',
       dreamy_accent: '#A78BFA',
-      dreamy_surface: '#EEF2FF',
-      dreamy_error: '#B91C1C',
-
-      // Minimal Palette
-      minimal_background: '#FFFFFF',
-      minimal_text: '#111827',
-      minimal_accent: '#6B7280',
-      minimal_surface: '#F3F4F6',
-      minimal_error: '#F87171',
+      dreamy_surface: '#2D1F4E',
+      dreamy_error: '#F87171',
 
       // Nature Palette
-      nature_background: '#ECFDF5',
-      nature_text: '#064E3B',
-      nature_accent: '#10B981',
-      nature_surface: '#D1FAE5',
-      nature_error: '#DC2626',
-
-      // Pastel Palette
-      pastel_background: '#FFF1F2',
-      pastel_text: '#4B5563',
-      pastel_accent: '#F472B6',
-      pastel_surface: '#FFE4E6',
-      pastel_error: '#F87171',
+      nature_background: '#052E16',
+      nature_text: '#D1FAE5',
+      nature_accent: '#34D399',
+      nature_surface: '#064E3B',
+      nature_error: '#F87171',
 
       // Warm Palette
-      warm_background: '#FEF3C7',
-      warm_text: '#78350F',
-      warm_accent: '#F59E0B',
-      warm_surface: '#FFFBEB',
-      warm_error: '#B91C1C',
+      warm_background: '#3B1A08',
+      warm_text: '#FEF3C7',
+      warm_accent: '#FBBF24',
+      warm_surface: '#5C2B0D',
+      warm_error: '#F87171',
 
       // Dark Palette
-      dark_background: '#1F2937',
-      dark_text: '#F9FAFB',
-      dark_accent: '#3B82F6',
-      dark_surface: '#374151',
-      dark_error: '#EF4444',
+      dark_background: '#000000',
+      dark_text: '#FFFFFF',
+      dark_accent: '#FFFFFF',
+      dark_surface: '#1C1C1C',
+      dark_error: '#FF4444',
+
+      // Midnight Palette
+      midnight_background: '#030A1A',
+      midnight_text: '#F4F1FF',
+      midnight_accent: '#8B5CF6',
+      midnight_surface: '#0B1630',
+      midnight_error: '#FB7185',
+
+      // Lavender Palette
+      lavender_background: '#FFF8FC',
+      lavender_text: '#29234F',
+      lavender_accent: '#8B5CF6',
+      lavender_surface: '#FFF0FA',
+      lavender_error: '#F9739A',
     },
 
     extend: {
@@ -72,7 +98,6 @@ module.exports = {
         'poppins-bold': ['PoppinsBold', 'sans-serif'],
         roboto: ['RobotoRegular', 'sans-serif'],
         'roboto-medium': ['RobotoMedium', 'sans-serif'],
-        arizonia: ['Arizonia_400Regular', 'cursive'],
       },
     },
   },

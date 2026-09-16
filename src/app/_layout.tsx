@@ -1,6 +1,6 @@
 // app/_layout.tsx
-import { LogBox } from 'react-native';
-import { useState, useEffect } from 'react';
+import { AppState, LogBox } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 
 // Suppress the third-party deprecation warning for SafeAreaView
@@ -9,6 +9,7 @@ LogBox.ignoreLogs([
   'SafeAreaView has been extracted from react-native',
 ]);
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useFonts, Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Roboto_400Regular, Roboto_500Medium } from '@expo-google-fonts/roboto';
 import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
@@ -31,15 +32,19 @@ import ThemesHeader from '~/components/themesHeader';
 import AccountHeader from '~/components/AccountHeader';
 import SettingsHeader from '~/components/settingsHeader';
 import AboutHeader from '~/components/aboutHeader';
+import AchievementsHeader from '~/components/AchievementsHeader';
+import NotificationsHeader from '~/components/NotificationsHeader';
+import InsightsHeader from '~/components/InsightsHeader';
 import LockScreen from '~/components/LockScreen';
 import SyncManager from '~/components/SyncManager';
 import DailyEntryManager from '~/components/DailyEntryManager';
 import { persistor, store } from '~/store/store';
 import type { ThemeKey } from '~/store/slices/themeSlice';
+import { initializeAds, shouldAttemptIdleInterstitial, showInterstitialAd } from '../util/ads';
 
 export default function Layout() {
   const [isLocked, setIsLocked] = useState(false);
-  const [savedTheme, setSavedTheme] = useState<ThemeKey>('cozy');
+  const [savedTheme, setSavedTheme] = useState<ThemeKey>('dark');
 
   const [fontsLoaded] = useFonts({
     PoppinsRegular: Poppins_400Regular,
@@ -55,6 +60,8 @@ export default function Layout() {
     DancingScript: DancingScript_400Regular,
     Pacifico: Pacifico_400Regular,
   });
+  const appState = useRef(AppState.currentState);
+  const backgroundedAt = useRef(Date.now());
 
   // Read the persisted theme from AsyncStorage before the store rehydrates
   useEffect(() => {
@@ -77,6 +84,38 @@ export default function Layout() {
   useEffect(() => {
     const t = setTimeout(() => setSplashDone(true), 5000);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    initializeAds().catch((error) => {
+      console.warn('AdMob initialization failed:', error);
+    });
+
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        backgroundedAt.current = Date.now();
+        appState.current = nextState;
+        return;
+      }
+
+      if (nextState === 'active' && appState.current !== 'active') {
+        const idleSeconds = Math.floor((Date.now() - backgroundedAt.current) / 1000);
+        const shouldShow = await shouldAttemptIdleInterstitial(idleSeconds);
+        if (shouldShow) {
+          try {
+            await showInterstitialAd();
+          } catch (error) {
+            console.warn('Idle interstitial failed:', error);
+          }
+        }
+      }
+
+      appState.current = nextState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   // If fonts not loaded or splash timer not done, show splash
@@ -109,7 +148,11 @@ export default function Layout() {
           <LockScreen onUnlocked={() => setIsLocked(false)} />
         ) : (
           <SafeAreaProvider>
-            <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+            {/* Modern edge-to-edge status bar (Android 15+). Replaces manual
+                Window.setStatusBarColor / setNavigationBarColor calls flagged
+                as deprecated by Play. Headers pad via useSafeAreaInsets. */}
+            <StatusBar style="auto" translucent />
+            <SafeAreaView style={{ flex: 1 }} edges={['bottom', 'left', 'right']}>
               {/* Creates a fresh diary entry every day at local midnight
                   and on app foreground, so each day always has its own
                   isolated bucket. */}
@@ -163,6 +206,27 @@ export default function Layout() {
                   options={{
                     title: 'Themes',
                     header: () => <ThemesHeader />,
+                  }}
+                />
+                <Stack.Screen
+                  name="Achievements/index"
+                  options={{
+                    title: 'Achievements',
+                    header: () => <AchievementsHeader />,
+                  }}
+                />
+                <Stack.Screen
+                  name="Notifications/index"
+                  options={{
+                    title: 'Notifications',
+                    header: () => <NotificationsHeader />,
+                  }}
+                />
+                <Stack.Screen
+                  name="Insights/index"
+                  options={{
+                    title: 'Insights',
+                    header: () => <InsightsHeader />,
                   }}
                 />
               </Stack>

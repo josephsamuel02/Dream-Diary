@@ -1,6 +1,17 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type ThemeKey = 'cozy' | 'night' | 'dreamy' | 'nature' | 'warm' | 'dark';
+export type ThemeKey =
+  | 'blossom'
+  | 'rose'
+  | 'lilac'
+  | 'cozy'
+  | 'night'
+  | 'dreamy'
+  | 'nature'
+  | 'warm'
+  | 'dark'
+  | 'midnight'
+  | 'lavender';
 
 export interface ThemeColors {
   background: string;
@@ -12,6 +23,30 @@ export interface ThemeColors {
 }
 
 export const THEMES: Record<ThemeKey, ThemeColors> = {
+  blossom: {
+    background: '#FFF0F6',
+    text: '#5C2A3A',
+    accent: '#EC4899',
+    surface: '#FCE7F3',
+    error: '#F87171',
+    headerGradient: ['#FBCFE8', '#F9A8D4', '#F472B6'],
+  },
+  rose: {
+    background: '#FFF1F2',
+    text: '#6B2737',
+    accent: '#E11D48',
+    surface: '#FFE4E6',
+    error: '#F87171',
+    headerGradient: ['#FECDD3', '#FDA4AF', '#FB7185'],
+  },
+  lilac: {
+    background: '#F5F3FF',
+    text: '#4C1D95',
+    accent: '#8B5CF6',
+    surface: '#EDE9FE',
+    error: '#F87171',
+    headerGradient: ['#DDD6FE', '#C4B5FD', '#A78BFA'],
+  },
   cozy: {
     background: '#2C1810',
     text: '#F5E6D3',
@@ -54,11 +89,27 @@ export const THEMES: Record<ThemeKey, ThemeColors> = {
   },
   dark: {
     background: '#000000',
-    text: '#F5F5F5',
-    accent: '#909090',
+    text: '#FFFFFF',
+    accent: '#FFFFFF',
     surface: '#1C1C1C',
     error: '#FF4444',
     headerGradient: ['#000000', '#0D0D0D', '#1C1C1C'],
+  },
+  midnight: {
+    background: '#030A1A',
+    text: '#F4F1FF',
+    accent: '#8B5CF6',
+    surface: '#0B1630',
+    error: '#FB7185',
+    headerGradient: ['#020617', '#0B1630', '#172554'],
+  },
+  lavender: {
+    background: '#FFF8FC',
+    text: '#29234F',
+    accent: '#8B5CF6',
+    surface: '#FFF0FA',
+    error: '#F9739A',
+    headerGradient: ['#C4B5FD', '#F0ABFC', '#FDA4AF'],
   },
 };
 
@@ -68,8 +119,27 @@ export interface ThemeState {
   backgroundOpacity: number;
 }
 
+/**
+ * Single source of truth for "is this a dark-background theme?".
+ * Dark: cozy, night, dreamy, nature, warm, dark, midnight.
+ * Light: blossom, rose, lilac, lavender.
+ * Keep in sync with SPLASH_THEMES titleColor in `src/components/Splash.tsx`
+ * (dark splash screens use white titles, light ones use dark titles).
+ */
+export const DARK_THEME_KEYS: ThemeKey[] = [
+  'cozy',
+  'night',
+  'dreamy',
+  'nature',
+  'warm',
+  'dark',
+  'midnight',
+];
+
+export const isDarkThemeKey = (key: ThemeKey): boolean => DARK_THEME_KEYS.includes(key);
+
 const initialState: ThemeState = {
-  currentTheme: 'cozy',
+  currentTheme: 'dark',
   backgroundImage: null,
   backgroundOpacity: 0.3,
 };
@@ -100,6 +170,7 @@ export const { setTheme, setBackgroundImage, setBackgroundOpacity, clearBackgrou
 export const selectCurrentTheme = (state: { theme: ThemeState }) => state.theme.currentTheme;
 export const selectThemeColors = (state: { theme: ThemeState }) => THEMES[state.theme.currentTheme];
 export const selectBackgroundImage = (state: { theme: ThemeState }) => state.theme.backgroundImage;
-export const selectBackgroundOpacity = (state: { theme: ThemeState }) => state.theme.backgroundOpacity;
+export const selectBackgroundOpacity = (state: { theme: ThemeState }) =>
+  state.theme.backgroundOpacity;
 
 export default themeSlice.reducer;

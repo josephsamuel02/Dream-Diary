@@ -10,18 +10,33 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, Entypo } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppDialog } from '~/hooks/useAppDialog';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { replaceBlocksForEntry, removeEntry } from '~/store/slices/diarySlice';
-import { selectThemeColors } from '~/store/slices/themeSlice';
+import type { Mood, MoodEntry } from '~/store/slices/diarySlice';
+import { selectCurrentTheme, selectThemeColors, isDarkThemeKey } from '~/store/slices/themeSlice';
+import { selectSettings } from '~/store/slices/settingsSlice';
 import { useToday } from '~/util/useToday';
+import { getMoodMeta, getLatestMoodFromEntry, formatMoodTime } from '~/util/moods';
+import { supabase } from '~/lib/supabase';
+import { deleteRemoteEntry } from '~/util/diarySync';
 
 type Block = { id: string; type: 'text' | 'image' | 'audio'; content: string };
-type Entry = { id: string; date?: string; blocks: Block[]; title?: string };
+type Entry = {
+  id: string;
+  date?: string;
+  blocks: Block[];
+  title?: string;
+  mood?: Mood;
+  moods?: MoodEntry[];
+  tag?: string;
+  updatedAt?: string;
+  createdAt?: string;
+};
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -38,6 +53,9 @@ export default function HistoryItem({
 }) {
   const dispatch = useAppDispatch();
   const themeColors = useAppSelector(selectThemeColors);
+  const currentTheme = useAppSelector(selectCurrentTheme);
+  const isDarkTheme = isDarkThemeKey(currentTheme);
+  const { cloudSyncEnabled } = useAppSelector(selectSettings);
   const { showDialog, dialogElement } = useAppDialog();
 
   // menu states
@@ -57,6 +75,7 @@ export default function HistoryItem({
   const performDelete = useCallback(async () => {
     setBusy(true);
     try {
+      // Delete local media files (images, audio)
       await Promise.all(
         (entry.blocks ?? [])
           .filter((b) => b.type === 'image' || b.type === 'audio')
@@ -70,14 +89,31 @@ export default function HistoryItem({
             }
           })
       );
+
+      // Delete from remote database if sync is enabled
+      if (cloudSyncEnabled) {
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const userId = session?.user?.id;
+          if (userId) {
+            await deleteRemoteEntry(entry.id, userId);
+          }
+        } catch (e: any) {
+          // Log but don't block local deletion if remote fails
+          console.warn('Failed to delete remote entry:', e?.message);
+        }
+      }
     } catch (e: any) {
       // ignore
     } finally {
+      // Always delete locally
       dispatch(removeEntry(entry.id));
       setBusy(false);
       setMenuOpen(false);
     }
-  }, [dispatch, entry]);
+  }, [dispatch, entry, cloudSyncEnabled]);
 
   // measure the icon position and open the modal popover
   const openOptions = useCallback(() => {
@@ -113,6 +149,17 @@ export default function HistoryItem({
   const hasAudio = entry.blocks.some((b) => b.type === 'audio');
   const firstImage = entry.blocks.find((b) => b.type === 'image');
 
+  // Get latest mood (handles both legacy single mood and new moods array)
+  const latestMoodMeta = getLatestMoodFromEntry(entry);
+  const moodCount = entry.moods?.length ?? (entry.mood ? 1 : 0);
+
+  // Title is shown above the preview when set; otherwise the first
+  // line of the preview doubles as the title.
+  const titleLine = entry.title?.trim() || (preview ? preview.split('\n')[0]?.slice(0, 40) : '');
+  const previewBody = entry.title?.trim()
+    ? preview
+    : preview.split('\n').slice(1).join(' ').trim() || preview;
+
   // compute popover position given anchor; returns {left, top}
   const computePopoverPos = () => {
     const popW = POPOVER_WIDTH;
@@ -141,6 +188,18 @@ export default function HistoryItem({
   const today = useToday();
   const isToday = entry.date === today;
 
+  // Friendly timestamp for the row footer ("Today, 9:30 AM" or "Apr 14, 9:30 AM").
+  const timestampLabel = (() => {
+    const ts = entry.updatedAt ?? entry.createdAt;
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return '';
+    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    if (isToday) return `Today, ${time}`;
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `${dateStr}, ${time}`;
+  })();
+
   return (
     <TouchableOpacity
       onPress={() => onOpen(entry.id)}
@@ -167,42 +226,52 @@ export default function HistoryItem({
         <View
           style={[
             styles.dateBadge,
-            { backgroundColor: isToday ? themeColors.accent : themeColors.surface },
-            isToday && { shadowColor: themeColors.accent, shadowOpacity: 0.3 },
+            {
+              backgroundColor: isToday
+                ? isDarkTheme
+                  ? '#FFFFFF'
+                  : themeColors.accent
+                : themeColors.surface,
+            },
+            isToday && {
+              shadowColor: isDarkTheme ? '#FFFFFF' : themeColors.accent,
+              shadowOpacity: 0.3,
+            },
           ]}>
-          <Text style={[styles.dayNumber, { color: isToday ? '#fff' : themeColors.text }]}>
+          <Text
+            style={[
+              styles.dayNumber,
+              { color: isToday ? (isDarkTheme ? '#000000' : '#fff') : themeColors.text },
+            ]}>
             {day || '—'}
           </Text>
           <Text
             style={[
               styles.monthText,
-              { color: isToday ? 'rgba(255,255,255,0.85)' : themeColors.text + '70' },
+              {
+                color: isToday
+                  ? isDarkTheme
+                    ? 'rgba(0,0,0,0.7)'
+                    : 'rgba(255,255,255,0.85)'
+                  : themeColors.text + '70',
+              },
             ]}>
             {month}
           </Text>
-          {isToday && <View style={styles.todayDot} />}
+          {isToday && (
+            <View style={[styles.todayDot, isDarkTheme && { backgroundColor: '#000000' }]} />
+          )}
         </View>
 
         {/* Middle: Content */}
         <View style={styles.contentBlock}>
-          {/* Date info row */}
-          <View style={styles.dateInfoRow}>
-            <Text style={[styles.weekdayText, { color: themeColors.text + '80' }]}>{weekday}</Text>
-            <Text style={[styles.yearText, { color: themeColors.text + '50' }]}>{year}</Text>
-            {isToday && (
-              <View style={[styles.todayPill, { backgroundColor: themeColors.accent }]}>
-                <Text style={styles.todayPillText}>TODAY</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Preview text */}
-          {preview ? (
+          {/* Title (or first line of preview) + preview body */}
+          {titleLine ? (
             <Text
-              style={[styles.previewText, { color: themeColors.text }]}
-              numberOfLines={2}
+              style={[styles.titleText, { color: themeColors.text }]}
+              numberOfLines={1}
               ellipsizeMode="tail">
-              {preview}
+              {titleLine}
             </Text>
           ) : (
             <View style={styles.emptyContainer}>
@@ -212,24 +281,84 @@ export default function HistoryItem({
               </Text>
             </View>
           )}
+          {previewBody ? (
+            <Text
+              style={[styles.previewText, { color: themeColors.text + 'B0' }]}
+              numberOfLines={1}
+              ellipsizeMode="tail">
+              {previewBody}
+            </Text>
+          ) : !titleLine ? (
+            <Text
+              style={[styles.previewText, { color: themeColors.text + '70' }]}
+              numberOfLines={1}>
+              Capture your day, reflect and grow.
+            </Text>
+          ) : null}
 
-          {/* Media indicators */}
-          {(hasImage || hasAudio) && (
-            <View style={styles.mediaRow}>
-              {hasImage && (
-                <View style={[styles.mediaIcon, { backgroundColor: themeColors.surface }]}>
-                  <Ionicons name="image" size={11} color={themeColors.accent} />
-                  <Text style={[styles.mediaLabel, { color: themeColors.accent }]}>Photo</Text>
-                </View>
-              )}
-              {hasAudio && (
-                <View style={[styles.mediaIcon, { backgroundColor: themeColors.surface }]}>
-                  <Ionicons name="mic" size={11} color={themeColors.accent} />
-                  <Text style={[styles.mediaLabel, { color: themeColors.accent }]}>Audio</Text>
-                </View>
+          {/* Footer: mood + tag + timestamp */}
+          <View style={styles.footerRow}>
+            <View style={styles.chip}>
+              {latestMoodMeta ? (
+                <>
+                  <Entypo
+                    name={latestMoodMeta.icon as any}
+                    size={12}
+                    color={latestMoodMeta.color}
+                    style={{ marginRight: 3 }}
+                  />
+                  <Text style={[styles.chipText, { color: latestMoodMeta.color }]}>
+                    {latestMoodMeta.label}
+                    {moodCount > 1 && ` +${moodCount - 1}`}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="happy-outline" size={11} color={themeColors.text + '60'} />
+                  <Text
+                    style={[styles.chipText, { color: themeColors.text + '70', marginLeft: 3 }]}>
+                    No mood
+                  </Text>
+                </>
               )}
             </View>
-          )}
+
+            <View style={styles.chip}>
+              <Ionicons
+                name="pricetag-outline"
+                size={11}
+                color={entry.tag ? themeColors.accent : themeColors.text + '60'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  {
+                    color: entry.tag ? themeColors.accent : themeColors.text + '70',
+                    marginLeft: 4,
+                  },
+                ]}>
+                {entry.tag || 'Add tag'}
+              </Text>
+            </View>
+
+            {(hasImage || hasAudio) && (
+              <View style={styles.chip}>
+                <Ionicons name={hasImage ? 'image' : 'mic'} size={11} color={themeColors.accent} />
+              </View>
+            )}
+
+            {!!timestampLabel && (
+              <View
+                style={[
+                  styles.timestampPill,
+                  { backgroundColor: themeColors.background, borderColor: themeColors.text + '15' },
+                ]}>
+                <Text style={[styles.timestampText, { color: themeColors.text + '80' }]}>
+                  {timestampLabel}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Right: Thumbnail or arrow */}
@@ -273,58 +402,58 @@ export default function HistoryItem({
             { left: popLeft, top: popTop, backgroundColor: themeColors.surface },
           ]}>
           <>
-              <TouchableOpacity
-                onPress={() => onOpen(entry.id)}
-                style={styles.popItem}
-                activeOpacity={0.7}>
-                <Feather
-                  name="edit-2"
-                  size={14}
-                  color={themeColors.text}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={[styles.popText, { color: themeColors.text }]}>Edit</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onOpen(entry.id)}
+              style={styles.popItem}
+              activeOpacity={0.7}>
+              <Feather
+                name="edit-2"
+                size={14}
+                color={themeColors.text}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.popText, { color: themeColors.text }]}>Edit</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  clearEntry();
-                  closeMenu();
-                }}
-                style={styles.popItem}
-                activeOpacity={0.7}>
-                <Feather
-                  name="refresh-cw"
-                  size={14}
-                  color={themeColors.text}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={[styles.popText, { color: themeColors.text }]}>Clear</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                clearEntry();
+                closeMenu();
+              }}
+              style={styles.popItem}
+              activeOpacity={0.7}>
+              <Feather
+                name="refresh-cw"
+                size={14}
+                color={themeColors.text}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.popText, { color: themeColors.text }]}>Clear</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  closeMenu();
-                  showDialog({
-                    title: 'Delete Entry',
-                    message: 'This entry will be permanently removed. This cannot be undone.',
-                    buttons: [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: performDelete },
-                    ],
-                  });
-                }}
-                style={[styles.popItem, styles.destructive]}
-                activeOpacity={0.7}>
-                <Feather
-                  name="trash-2"
-                  size={14}
-                  color={themeColors.error}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={[styles.popText, { color: themeColors.error }]}>Delete</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              onPress={() => {
+                closeMenu();
+                showDialog({
+                  title: 'Delete Entry',
+                  message: 'This entry will be permanently removed. This cannot be undone.',
+                  buttons: [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: performDelete },
+                  ],
+                });
+              }}
+              style={[styles.popItem, styles.destructive]}
+              activeOpacity={0.7}>
+              <Feather
+                name="trash-2"
+                size={14}
+                color={themeColors.error}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.popText, { color: themeColors.error }]}>Delete</Text>
+            </TouchableOpacity>
+          </>
         </View>
       </Modal>
       {dialogElement}
@@ -426,9 +555,15 @@ const styles = StyleSheet.create({
     fontFamily: 'RobotoMedium',
     letterSpacing: 1,
   },
-  previewText: {
-    fontSize: 14,
+  titleText: {
+    fontSize: 15,
     lineHeight: 20,
+    fontFamily: 'PoppinsBold',
+    marginBottom: 2,
+  },
+  previewText: {
+    fontSize: 13,
+    lineHeight: 18,
     fontFamily: 'RobotoRegular',
   },
   emptyContainer: {
@@ -440,6 +575,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'RobotoRegular',
     fontStyle: 'italic',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chipText: {
+    fontSize: 11,
+    fontFamily: 'RobotoMedium',
+  },
+  timestampPill: {
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  timestampText: {
+    fontSize: 10,
+    fontFamily: 'RobotoRegular',
   },
   mediaRow: {
     flexDirection: 'row',

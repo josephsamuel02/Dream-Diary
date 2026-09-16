@@ -11,8 +11,11 @@ import {
   Animated,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import HeaderMenu from './HeaderMenu';
+import BottomMenu from './BottomMenu';
 
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -62,8 +65,10 @@ const copyFileToAppAsync = async (uri: string, fallbackExt = 'jpg') => {
   }
 };
 
-const MainTab: React.FC = () => {
+const MainTab = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const entries = useAppSelector(selectEntries);
   const themeColors = useAppSelector(selectThemeColors);
@@ -71,11 +76,13 @@ const MainTab: React.FC = () => {
   // modal for camera options
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   // Animations
   const expandAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fabPulseAnim = useRef(new Animated.Value(1)).current;
 
   // audio recorder
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -110,6 +117,24 @@ const MainTab: React.FC = () => {
       pulseAnim.setValue(1);
     }
   }, [isRecording]);
+
+  // FAB Pulse animation (continuous)
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fabPulseAnim, {
+          toValue: 1.08,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabPulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   const toggleExpand = () => {
     const toValue = expanded ? 0 : 1;
@@ -190,8 +215,9 @@ const MainTab: React.FC = () => {
         return;
       }
       const res = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        mediaTypes: ['images'],
+        allowsEditing: false, // Disabled cropping as requested
+        quality: 0.6,
       });
       if (!res.canceled && (res as any).assets?.length) {
         const uri = (res as any).assets[0].uri;
@@ -220,8 +246,9 @@ const MainTab: React.FC = () => {
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false,
+        quality: 0.6,
       });
       if (!res.canceled && (res as any).assets?.length) {
         const uri = (res as any).assets[0].uri;
@@ -302,28 +329,38 @@ const MainTab: React.FC = () => {
     }
   }, [isRecording, expanded, toggleExpand]);
 
+  // Bottom nav tab definitions (left/right pairs around the centered FAB).
+  const isActive = (paths: string[]) =>
+    paths.some((p) => pathname === p || pathname?.startsWith(p));
+
   return (
     <>
-      {/* Backdrop overlay to close menu when tapping outside */}
-      {expanded && (
-        <Pressable
-          style={styles.backdrop}
-          onPress={closeIfNotRecording}
-        />
+      {/* Recording lockdown overlay - blocks all interactions during recording */}
+      {isRecording && (
+        <Pressable style={styles.recordingLockdownOverlay} onPress={onMicPress}>
+          <View style={styles.recordingIndicator}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <Ionicons name="mic" size={32} color="#fff" />
+            </Animated.View>
+            <Text style={styles.recordingText}>Recording in progress...</Text>
+            <Text style={styles.recordingSubtext}>Tap anywhere to stop recording</Text>
+          </View>
+        </Pressable>
       )}
 
-      <View style={styles.container}>
-        {/* Expanded action buttons — rendered above FAB in normal flow so touch
-            targets are at the same position as the visual elements. */}
+      {/* Backdrop overlay to close menu when tapping outside */}
+      {expanded && !isRecording && (
+        <Pressable style={styles.backdrop} onPress={closeIfNotRecording} />
+      )}
+
+      {/* Floating expanded actions (mic / photo) — sit above the FAB
+          when the user long-presses / re-taps to add media. */}
+      <View
+        style={[styles.expandedActions, { bottom: 70 + insets.bottom }]}
+        pointerEvents={expanded ? 'box-none' : 'none'}>
         <Animated.View
           pointerEvents={expanded ? 'auto' : 'none'}
-          style={[
-            styles.actionButton,
-            {
-              transform: [{ scale: micScale }],
-              opacity: micOpacity,
-            },
-          ]}>
+          style={[styles.actionButton, { transform: [{ scale: micScale }], opacity: micOpacity }]}>
           <TouchableOpacity onPress={onMicPress} activeOpacity={0.8} style={styles.secondaryButton}>
             <Animated.View
               style={[
@@ -348,10 +385,7 @@ const MainTab: React.FC = () => {
           pointerEvents={expanded ? 'auto' : 'none'}
           style={[
             styles.actionButton,
-            {
-              transform: [{ scale: cameraScale }],
-              opacity: cameraOpacity,
-            },
+            { transform: [{ scale: cameraScale }], opacity: cameraOpacity },
           ]}>
           <TouchableOpacity
             onPress={() => setCameraModalOpen(true)}
@@ -363,27 +397,70 @@ const MainTab: React.FC = () => {
             <Text style={[styles.buttonLabel, { color: themeColors.text }]}>Photo</Text>
           </TouchableOpacity>
         </Animated.View>
+      </View>
 
-        {/* Main FAB */}
-      <TouchableOpacity
-        onPress={hasTodayEntry ? toggleExpand : createNewEntry}
-        activeOpacity={0.9}
-        style={styles.fabContainer}>
-        <LinearGradient
-          colors={[themeColors.headerGradient[1], themeColors.headerGradient[0]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.fab, { shadowColor: themeColors.accent }]}>
-          <Animated.View style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
-            <Ionicons name={hasTodayEntry ? 'add' : 'create-outline'} size={26} color="#fff" />
+      <View
+        style={[
+          styles.tabBar,
+          {
+            backgroundColor: themeColors.surface,
+            borderColor: themeColors.accent + '20',
+            paddingBottom: Math.max(insets.bottom * 0.4, 8),
+          },
+        ]}>
+        <NavButton
+          icon="home"
+          label="Home"
+          active={isActive(['/', '/index'])}
+          themeColors={themeColors}
+          onPress={() => {
+            // Only navigate to home if not already there
+            if (!isActive(['/', '/index'])) {
+              router.push('/');
+            }
+          }}
+        />
+
+        {/* Center FAB — pencil when no entry yet, plus when expanded */}
+        <View style={styles.fabSlot}>
+          <Animated.View style={{ transform: [{ scale: fabPulseAnim }] }}>
+            <TouchableOpacity
+              onPress={hasTodayEntry ? toggleExpand : createNewEntry}
+              activeOpacity={0.9}
+              style={styles.fabContainer}>
+              <LinearGradient
+                colors={[themeColors.accent, themeColors.accent + 'DD']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.fab, { shadowColor: themeColors.accent }]}>
+                <Animated.View
+                  style={{ transform: [{ rotate: hasTodayEntry ? rotation : '0deg' }] }}>
+                  <Ionicons
+                    name={hasTodayEntry ? 'add' : 'create-outline'}
+                    size={26}
+                    color="#000"
+                  />
+                </Animated.View>
+              </LinearGradient>
+              {!hasTodayEntry && (
+                <View style={[styles.fabBadge, { backgroundColor: themeColors.accent }]}>
+                  <Text style={styles.fabBadgeText}>New</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </Animated.View>
-        </LinearGradient>
-        {!hasTodayEntry && (
-          <View style={[styles.fabBadge, { backgroundColor: themeColors.accent }]}>
-            <Text style={styles.fabBadgeText}>New</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+        </View>
+
+        <NavButton
+          icon="grid-outline"
+          label="More"
+          active={moreMenuOpen}
+          themeColors={themeColors}
+          onPress={() => setMoreMenuOpen(true)}
+        />
+      </View>
+
+      <BottomMenu visible={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
 
       {/* Camera options modal */}
       <Modal
@@ -446,14 +523,50 @@ const MainTab: React.FC = () => {
         </View>
       </Modal>
 
-        {/* busy indicator when copying/deleting etc */}
-        {busy && (
-          <View style={styles.busyOverlay}>
-            <ActivityIndicator size="large" color={themeColors.accent} />
-          </View>
-        )}
-      </View>
+      {/* busy indicator when copying/deleting etc */}
+      {busy && (
+        <View style={styles.busyOverlay}>
+          <ActivityIndicator size="large" color={themeColors.accent} />
+        </View>
+      )}
     </>
+  );
+};
+
+// Single tab item rendered inside the bottom nav bar.
+const NavButton = ({
+  icon,
+  label,
+  active,
+  themeColors,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active?: boolean;
+  themeColors: { text: string; accent: string; surface: string; background: string };
+  onPress: () => void;
+}) => {
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.navButton}>
+      <View
+        style={[
+          styles.navIconWrap,
+          active && {
+            backgroundColor: themeColors.accent + '20',
+          },
+        ]}>
+        <Ionicons
+          name={icon}
+          size={20}
+          color={active ? themeColors.accent : themeColors.text + '80'}
+        />
+      </View>
+      <Text
+        style={[styles.navLabel, { color: active ? themeColors.accent : themeColors.text + '90' }]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 };
 
@@ -466,16 +579,61 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 99,
   },
-  container: {
+  // Bottom nav bar that stretches across the full width.
+  tabBar: {
     position: 'absolute',
-    bottom: 30,
-    right: 20,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    borderTopWidth: 1,
     zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 12,
+  },
+  navButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
+  navIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navLabel: {
+    marginTop: 1,
+    fontSize: 9,
+    fontFamily: 'RobotoMedium',
+  },
+  fabSlot: {
+    width: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -28,
+  },
+  expandedActions: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 28,
+    zIndex: 101,
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 14,
   },
   secondaryButton: {
     alignItems: 'center',
@@ -602,6 +760,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 32,
+  },
+  recordingLockdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  recordingIndicator: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  recordingText: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'PoppinsBold',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  recordingSubtext: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'RobotoRegular',
+    marginTop: 4,
+    opacity: 0.8,
+    textAlign: 'center',
   },
 });
 

@@ -14,6 +14,7 @@ import { useAppSelector } from '~/store/hooks';
 import { selectEntries } from '~/store/slices/diarySlice';
 import { selectThemeColors, selectBackgroundImage, selectBackgroundOpacity } from '~/store/slices/themeSlice';
 import HistoryItem from '~/components/historyItem';
+import AdBanner from '~/components/AdBanner';
 
 export default function AllEntries() {
   const router = useRouter();
@@ -133,12 +134,20 @@ export default function AllEntries() {
         </Text>
       </View>
 
+      {/* Non-intrusive placement while users browse saved entries. */}
+      <AdBanner />
+
       {/* Entries List */}
       <FlatList
         data={groupedEntries}
         keyExtractor={([monthYear]) => monthYear}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={5}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews
         renderItem={({ item: [monthYear, monthEntries] }) => (
           <View style={styles.monthGroup}>
             {/* Month Header */}

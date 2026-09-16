@@ -2,12 +2,14 @@
   "expo": {
     "name": "Dream Diary",
     "slug": "dream-diary",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "scheme": "dreamdiary",
-
     "jsEngine": "hermes",
-
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
@@ -19,6 +21,21 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash_screen_icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000",
+          "dark": {
+            "image": "./assets/splash_screen_icon.png",
+            "imageWidth": 220,
+            "resizeMode": "contain",
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
       [
         "expo-audio",
         {
@@ -38,17 +55,49 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
-      "expo-asset"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enablePngCrunchInReleaseBuilds": true,
+            "enableProguardInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.dreamdiary.app.** { *; }\n-keep class expo.modules.audio.** { *; }\n-keep class expo.modules.notifications.** { *; }\n-dontwarn expo.modules.**"
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      "./plugins/withAndroidAudioBootFix",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "delayAppMeasurementInit": true,
+          "userTrackingUsageDescription": "This identifier helps us show relevant ads and measure their performance."
+        }
+      ]
     ],
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#522017"
-    },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dreamdiary.app"
@@ -58,13 +107,26 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#522017"
       },
-      "notification": {
-        "foregroundImage": "./assets/notification-icon.png",
-        "color": "#ffffff"
-      },
       "package": "com.dreamdiary.app",
       "edgeToEdgeEnabled": true,
-      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE"
+      ],
+      "blockedPermissions": [
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.FOREGROUND_SERVICE_CAMERA",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE",
+        "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "extra": {
       "router": {},

@@ -1,17 +1,26 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase credentials. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to your .env file.'
+export const isSupabaseConfigured = (): boolean => Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured()) {
+  // Don't throw at import time — that would crash the whole app on boot
+  // when .env is missing (e.g. fresh EAS build without secrets). Sync and
+  // auth callers check isSupabaseConfigured() / catch per-call errors instead.
+  console.warn(
+    'Supabase credentials missing. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to your .env / EAS secrets. Cloud sync is disabled until then.'
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-anon-key',
+  {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
@@ -19,6 +28,17 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+export const isSupabaseOnline = async (): Promise<boolean> => {
+  try {
+    const state = await NetInfo.fetch();
+    if (state.isConnected === false) return false;
+    if (state.isInternetReachable === false) return false;
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Supabase client – shared singleton for the whole app.
